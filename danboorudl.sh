@@ -2,7 +2,7 @@
 # =================================================================
 # HYPRLAND WALLPAPER ROTATOR (Advanced Moebooru Integration)
 # Width/Height logic removed per request.
-# Supports: tags, pools, artist, score filters, size limits, preload cache
+# Supports: tags, pools, artist, score filters, size limits, preload cache, cleanup
 # =================================================================
 
 BASE_URL="https://konachan.net"
@@ -20,6 +20,8 @@ ARTIST=""
 POOL_ID=""
 PRELOAD_COUNT=3
 DRY_RUN=false
+CLEAN_MODE=false
+FORCE_CLEAN=false
 
 # --- Helpers ---
 convert_to_bytes() {
@@ -63,6 +65,8 @@ while [[ "$#" -gt 0 ]]; do
         -a|--artist) ARTIST="$2"; shift ;;
         -P|--pool) POOL_ID="$2"; shift ;;
         --dry-run) DRY_RUN=true ;;
+        -cc|--clean-cache) CLEAN_MODE=true ;;
+        -cf|--clean-force) CLEAN_MODE=true; FORCE_CLEAN=true ;;
         -h|--help)
             echo "Usage: $0 [options]"
             echo "  -t, --tags           Tags (e.g. 'scenic sky')"
@@ -74,6 +78,8 @@ while [[ "$#" -gt 0 ]]; do
             echo "  -m, --min-score      Minimum score filter (optional)"
             echo "  -a, --artist         Filter by artist/uploader (optional)"
             echo "  -P, --pool           Use pool ID instead of tag search"
+            echo "  -cc, --clean-cache   Clean all preload_* folders (keeps current.jpg)"
+            echo "  -cf, --clean-force   Clean without confirmation"
             echo "  --dry-run            Show matching results without downloading"
             exit 0 ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
@@ -93,6 +99,21 @@ PRELOAD_DIR="$CACHE_DIR/preload_$ARGS_HASH"
 mkdir -p "$PRELOAD_DIR"
 
 CURRENT_WALLPAPER="$CACHE_DIR/current.jpg"
+
+# --- Cleanup Mode ---
+if $CLEAN_MODE; then
+    echo "⚠️  Cleaning preload cache folders in: $CACHE_DIR"
+    if ! $FORCE_CLEAN; then
+        read -rp "Are you sure? This will delete all preloaded wallpapers but keep the current one. (y/N): " confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            echo "Aborted."
+            exit 0
+        fi
+    fi
+    find "$CACHE_DIR" -maxdepth 1 -type d -name "preload_*" -exec rm -rf {} +
+    echo "✅ Preload cache cleaned. Current wallpaper preserved."
+    exit 0
+fi
 
 # --- Lock Handling ---
 exec 9>"$LOCKFILE"
@@ -127,13 +148,11 @@ download_wallpaper() {
 
     if [[ "$DRY_RUN" == true ]]; then
         echo "---- Available Posts ----"
-        # For pool responses, posts are inside .posts; otherwise top-level array
         jq -r '.posts? // . | [.id, .file_url, (.file_size|tostring), .width, .height] | @tsv' "$json"
         rm -f "$json"
         return 0
     fi
 
-    # Select an image whose file_size exists and is <= max
     local IMAGE_URL
     IMAGE_URL=$(jq -r --argjson max "$MAX_FILE_SIZE_BYTES" \
         '.posts? // . | map(select(.file_size != null and .file_size <= $max)) | .[].file_url' "$json" | shuf -n 1)
