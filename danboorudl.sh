@@ -52,12 +52,51 @@ human_readable_size() {
     fi
 }
 
+parse_page_argument() {
+    local arg="$1"
+
+    # Handle "random" or "rand" (default range 1-1000)
+    if [[ "$arg" == "random" || "$arg" == "rand" ]]; then
+        echo $((RANDOM % 1000 + 1))
+        return 0
+    fi
+
+    # Handle range format: "random:MIN-MAX" or "MIN-MAX"
+    if [[ "$arg" =~ ^(random:)?([0-9]+)-([0-9]+)$ ]]; then
+        local min="${BASH_REMATCH[2]}"
+        local max="${BASH_REMATCH[3]}"
+
+        if (( min >= max )); then
+            echo "Error: Invalid range '$arg' (min must be less than max)" >&2
+            return 1
+        fi
+
+        echo $((RANDOM % (max - min + 1) + min))
+        return 0
+    fi
+
+    # Handle plain numeric page
+    if [[ "$arg" =~ ^[0-9]+$ ]]; then
+        echo "$arg"
+        return 0
+    fi
+
+    # Invalid format
+    echo "Error: Invalid page format '$arg'. Use number, 'random', or 'MIN-MAX'" >&2
+    return 1
+}
+
 # --- Parse Args ---
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -t|--tags) TAGS="$2"; shift ;;
         -l|--limit) LIMIT="$2"; shift ;;
-        -p|--page) PAGE="$2"; shift ;;
+        -p|--page)
+            PAGE=$(parse_page_argument "$2")
+            if [[ $? -ne 0 ]]; then
+                exit 1
+            fi
+            shift ;;
         -r|--rating) RATING="$2"; shift ;;
         -o|--order) ORDER="$2"; shift ;;
         -s|--max-file-size) MAX_FILE_SIZE="$2"; shift ;;
@@ -73,7 +112,7 @@ while [[ "$#" -gt 0 ]]; do
             echo "  -r, --rating         s/q/e (default: s)"
             echo "  -o, --order          random, score, date"
             echo "  -l, --limit          Number of posts to query (default: 50)"
-            echo "  -p, --page           Page number (default: 1)"
+             echo "  -p, --page           Page number, 'random', or 'MIN-MAX' range (default: 1)"
             echo "  -s, --max-file-size  Max file size (e.g. 500KB, 2MB, default: 2MB)"
             echo "  -m, --min-score      Minimum score filter (optional)"
             echo "  -a, --artist         Filter by artist/uploader (optional)"
