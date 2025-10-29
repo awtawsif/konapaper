@@ -93,7 +93,7 @@ while [[ "$#" -gt 0 ]]; do
         -l|--limit) LIMIT="$2"; shift ;;
         -p|--page)
             PAGE=$(parse_page_argument "$2")
-            if [[ $? -ne 0 ]]; then
+            if ! PAGE=$(parse_page_argument "$2"); then
                 exit 1
             fi
             shift ;;
@@ -165,7 +165,7 @@ fi
 download_wallpaper() {
     local outfile="$1"
     local ENCODED_TAGS
-    ENCODED_TAGS=$(echo "$TAGS" | sed 's/ /+/g')
+    ENCODED_TAGS="${TAGS// /+}"
 
     local API_URL
     if [[ -n "$POOL_ID" ]]; then
@@ -187,14 +187,13 @@ download_wallpaper() {
 
     if [[ "$DRY_RUN" == true ]]; then
         echo "---- Available Posts ----"
-        jq -r '.posts? // . | [.id, .file_url, (.file_size|tostring), .width, .height] | @tsv' "$json"
+        jq -r 'if type == "array" then .[] else .posts? // . end | [.id, .file_url, (.file_size|tostring), .width, .height] | @tsv' "$json"
         rm -f "$json"
         return 0
     fi
 
     local IMAGE_URL
-    IMAGE_URL=$(jq -r --argjson max "$MAX_FILE_SIZE_BYTES" \
-        '.posts? // . | map(select(.file_size != null and .file_size <= $max)) | .[].file_url' "$json" | shuf -n 1)
+    IMAGE_URL=$(jq -r --argjson max "$MAX_FILE_SIZE_BYTES" 'if type == "array" then . else .posts? // . end | map(select(.file_size != null and .file_size <= $max)) | .[].file_url' "$json" | shuf -n 1)
 
     rm -f "$json"
 
