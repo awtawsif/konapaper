@@ -160,6 +160,20 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
+echo "Current run arguments:"
+echo "  Limit: $LIMIT"
+echo "  Page: $PAGE"
+echo "  Rating: $RATING"
+echo "  Order: $ORDER"
+echo "  Max file size: $MAX_FILE_SIZE"
+[[ -n "$TAGS" ]] && echo "  Tags: $TAGS"
+[[ -n "$MIN_SCORE" ]] && echo "  Min score: $MIN_SCORE"
+[[ -n "$ARTIST" ]] && echo "  Artist: $ARTIST"
+[[ -n "$POOL_ID" ]] && echo "  Pool ID: $POOL_ID"
+$DRY_RUN && echo "  Dry run: enabled"
+$CLEAN_MODE && echo "  Clean mode: enabled"
+$FORCE_CLEAN && echo "  Force clean: enabled"
+
 MAX_FILE_SIZE_BYTES=$(convert_to_bytes "$MAX_FILE_SIZE")
 
 # --- Paths ---
