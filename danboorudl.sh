@@ -25,7 +25,11 @@ FORCE_CLEAN=false
 
 
 # --- Config ---
-CONFIG_FILE="$HOME/.config/konapaper/config"
+# Priority: 1. Local Directory -> 2. User Config -> 3. Script Directory
+CONFIG_FILE="./konapaper.conf"
+if [[ ! -f "$CONFIG_FILE" ]]; then
+    CONFIG_FILE="$HOME/.config/konapaper/config"
+fi
 if [[ ! -f "$CONFIG_FILE" ]]; then
     CONFIG_FILE="$(dirname "$0")/konapaper.conf"
 fi
