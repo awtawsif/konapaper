@@ -23,6 +23,36 @@ DRY_RUN=false
 CLEAN_MODE=false
 FORCE_CLEAN=false
 
+
+# --- Config ---
+CONFIG_FILE="$HOME/.config/konapaper/config"
+if [[ ! -f "$CONFIG_FILE" ]]; then
+    CONFIG_FILE="$(dirname "$0")/konapaper.conf"
+fi
+
+load_config() {
+    if [[ -f "$CONFIG_FILE" ]]; then
+        # shellcheck source=/dev/null
+        source "$CONFIG_FILE"
+    fi
+}
+
+process_random_tags() {
+    if [[ "${#RANDOM_TAGS_LIST[@]}" -gt 0 && "$RANDOM_TAGS_COUNT" -gt 0 ]]; then
+        local selected_tags
+        selected_tags=$(printf "%s\n" "${RANDOM_TAGS_LIST[@]}" | shuf -n "$RANDOM_TAGS_COUNT" | tr '\n' ' ')
+        if [[ -n "$TAGS" ]]; then
+            TAGS="$TAGS $selected_tags"
+        else
+            TAGS="$selected_tags"
+        fi
+        TAGS=$(echo "$TAGS" | sed 's/ *$//')
+    fi
+}
+
+# Load config and process tags before parsing CLI args
+load_config
+process_random_tags
 # --- Helpers ---
 convert_to_bytes() {
     local size_str="$1"
