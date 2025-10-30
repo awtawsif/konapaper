@@ -58,9 +58,9 @@ process_random_tags() {
     fi
 }
 
-# Load config and process tags before parsing CLI args
+# Load config before parsing CLI args
 load_config
-process_random_tags
+RANDOM_TAGS_COUNT=${RANDOM_TAGS_COUNT:-0}
 # --- Helpers ---
 convert_to_bytes() {
     local size_str="$1"
@@ -146,8 +146,9 @@ while [[ "$#" -gt 0 ]]; do
         --discover-artists) DISCOVER_ARTISTS=true ;;
         --list-pools) LIST_POOLS=true ;;
         --search-pools) SEARCH_POOLS="$2"; LIST_POOLS=true; shift ;;
+        --random-tags) RANDOM_TAGS_COUNT="$2"; shift ;;
         -cc|--clean-cache) CLEAN_MODE=true ;;
-        -cf|--clean-force) CLEAN_MODE=true; FORCE_CLEAN=true ;;
+        -cf|--clean-force) CLEAN_MODE=true; FORCE_CLEAN=true ;; 
         -h|--help)
             echo "Usage: $0 [options]"
             echo "  -t, --tags           Tags (e.g. 'scenic sky')"
@@ -163,14 +164,18 @@ while [[ "$#" -gt 0 ]]; do
              echo "  -cf, --clean-force   Clean without confirmation"
              echo "  --dry-run            Show matching results without downloading"
              echo "  --discover-tags      Discover popular tags"
-             echo "  --discover-artists   Discover artists"
-             echo "  --list-pools         List available pools"
-             echo "  --search-pools       Search pools by name"
+              echo "  --discover-artists   Discover artists"
+              echo "  --list-pools         List available pools"
+              echo "  --search-pools       Search pools by name"
+              echo "  --random-tags        Number of random tags to select from config list"
              exit 0 ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
 done
+
+# Process random tags if specified
+process_random_tags
 
 echo "Current run arguments:"
 echo "  Limit: $LIMIT"
@@ -186,9 +191,10 @@ echo "  Max file size: $MAX_FILE_SIZE"
  $DISCOVER_TAGS && echo "  Tag discovery: enabled"
  $DISCOVER_ARTISTS && echo "  Artist discovery: enabled"
  $LIST_POOLS && echo "  Pool listing: enabled"
- [[ -n "$SEARCH_POOLS" ]] && echo "  Pool search: $SEARCH_POOLS"
- $CLEAN_MODE && echo "  Clean mode: enabled"
- $FORCE_CLEAN && echo "  Force clean: enabled"
+  [[ -n "$SEARCH_POOLS" ]] && echo "  Pool search: $SEARCH_POOLS"
+  [[ "$RANDOM_TAGS_COUNT" -gt 0 ]] && echo "  Random tags count: $RANDOM_TAGS_COUNT"
+  $CLEAN_MODE && echo "  Clean mode: enabled"
+  $FORCE_CLEAN && echo "  Force clean: enabled"
 
 MAX_FILE_SIZE_BYTES=$(convert_to_bytes "$MAX_FILE_SIZE")
 
@@ -197,7 +203,11 @@ LOCKFILE="/tmp/hypr_wallpaper_setter.lock"
 CACHE_DIR="$HOME/.cache/hypr_wallpapers"
 mkdir -p "$CACHE_DIR"
 
-ARGS_HASH=$(echo "${TAGS}_${RATING}_${ORDER}_${MAX_FILE_SIZE_BYTES}_${MIN_SCORE}_${ARTIST}_${POOL_ID}" | md5sum | awk '{print $1}')
+if [[ "$RANDOM_TAGS_COUNT" -gt 0 ]]; then
+    ARGS_HASH=$(echo "random_${RATING}_${ORDER}_${MAX_FILE_SIZE_BYTES}_${MIN_SCORE}_${ARTIST}_${POOL_ID}" | md5sum | awk '{print $1}')
+else
+    ARGS_HASH=$(echo "${TAGS}_${RATING}_${ORDER}_${MAX_FILE_SIZE_BYTES}_${MIN_SCORE}_${ARTIST}_${POOL_ID}" | md5sum | awk '{print $1}')
+fi
 PRELOAD_DIR="$CACHE_DIR/preload_$ARGS_HASH"
 mkdir -p "$PRELOAD_DIR"
 

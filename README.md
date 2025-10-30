@@ -6,7 +6,7 @@ A powerful and flexible wallpaper rotator script for Hyprland, designed to fetch
 
 - **Advanced Filtering**: Search by tags, ratings (safe/questionable/explicit), minimum score, artist, and pool IDs
 - **Intelligent Caching**: Preloads wallpapers in the background for instant transitions
-- **Random Tag Selection**: Configure a list of favorite tags and let the script randomly select combinations
+- **Random Tag Selection**: Configure a list of favorite tags and use `--random-tags` to randomly select combinations (shared preload cache)
 - **Discovery Modes**: Explore popular tags, artists, and pools without downloading
 - **Dry Run Mode**: Preview available wallpapers without downloading
 - **Pool Support**: Download from curated collections of images
@@ -72,7 +72,7 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 #### Random Tag Feature
 
 - **`RANDOM_TAGS_LIST`**: Array of tags to randomly select from (e.g., `("landscape" "scenic" "sky" "clouds")`)
-- **`RANDOM_TAGS_COUNT`**: Number of random tags to select (default: 0, disabled)
+- **CLI Option**: `--random-tags COUNT` - Number of random tags to select (default: 0, disabled)
 
 #### Cache and Preloading
 
@@ -114,6 +114,7 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 | `--discover-artists` | | Discover artists | false |
 | `--list-pools` | | List available pools | false |
 | `--search-pools` | | Search pools by name | None |
+| `--random-tags` | | Number of random tags to select from config list | 0 |
 | `--clean-cache` | `-cc` | Clean preload cache | false |
 | `--clean-force` | `-cf` | Clean without confirmation | false |
 | `--help` | `-h` | Show help | |
@@ -191,10 +192,15 @@ With the following config:
 
 ```bash
 RANDOM_TAGS_LIST=("landscape" "scenic" "sky" "clouds" "water" "original" "touhou" "building")
-RANDOM_TAGS_COUNT=3
 ```
 
-The script will randomly select 3 tags from the list for each run, ensuring variety.
+Run with:
+
+```bash
+./konapaper.sh --random-tags 3
+```
+
+The script will randomly select 3 tags from the list for each run, ensuring variety. All random tag runs share the same preload cache folder.
 
 ## API Documentation
 
