@@ -37,11 +37,11 @@ A powerful and flexible wallpaper rotator script for Hyprland, designed to fetch
    chmod +x konapaper.sh
    ```
 
-3. (Optional) Copy the configuration file to your config directory:
+3. Initialize the configuration file:
    ```bash
-   mkdir -p ~/.config/konapaper
-   cp konapaper.conf ~/.config/konapaper/config
+   ./konapaper.sh --init
    ```
+   This copies the default config file to `~/.config/konapaper/konapaper.conf`.
 
 4. Ensure `swww` daemon is running (the script will start it automatically if needed)
 
@@ -49,9 +49,9 @@ A powerful and flexible wallpaper rotator script for Hyprland, designed to fetch
 
 Konapaper uses a configuration file (`konapaper.conf`) that allows you to set default values. The script searches for the config file in this order:
 
-1. `./konapaper.conf` (current directory)
-2. `~/.config/konapaper/config` (user config directory)
-3. The script's directory
+1. `~/.config/konapaper/konapaper.conf` (user config directory)
+2. The script's directory
+3. `./konapaper.conf` (current directory)
 
 ### Configuration Options
 
@@ -61,6 +61,7 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 - **`LIMIT`**: Number of posts to query (default: 50)
 - **`RATING`**: Content rating filter - `"s"` (safe), `"q"` (questionable), `"e"` (explicit) (default: `"s"`)
 - **`ORDER`**: Sort order - `"random"`, `"score"`, `"date"` (default: `"random"`)
+- **`PAGE`**: Page number, 'random', or 'MIN-MAX' range (default: 1)
 
 #### Advanced Filtering
 
@@ -117,6 +118,7 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 | `--random-tags` | | Number of random tags to select from config list | 0 |
 | `--clean-cache` | `-cc` | Clean preload cache | false |
 | `--clean-force` | `-cf` | Clean without confirmation | false |
+| `--init` | | Copy config file to user config directory | false |
 | `--help` | `-h` | Show help | |
 
 ### Discovery Modes

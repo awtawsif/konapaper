@@ -22,6 +22,7 @@ PRELOAD_COUNT=3
 DRY_RUN=false
 CLEAN_MODE=false
 FORCE_CLEAN=false
+INIT_MODE=false
 DISCOVER_TAGS=false
 DISCOVER_ARTISTS=false
 LIST_POOLS=false
@@ -29,13 +30,13 @@ SEARCH_POOLS=""
 
 
 # --- Config ---
-# Priority: 1. Local Directory -> 2. User Config -> 3. Script Directory
-CONFIG_FILE="./konapaper.conf"
-if [[ ! -f "$CONFIG_FILE" ]]; then
-    CONFIG_FILE="$HOME/.config/konapaper/config"
-fi
+# Priority: 1. User Config -> 2. Script Directory -> 3. Current Directory
+CONFIG_FILE="$HOME/.config/konapaper/konapaper.conf"
 if [[ ! -f "$CONFIG_FILE" ]]; then
     CONFIG_FILE="$(dirname "$0")/konapaper.conf"
+fi
+if [[ ! -f "$CONFIG_FILE" ]]; then
+    CONFIG_FILE="./konapaper.conf"
 fi
 
 load_config() {
@@ -54,7 +55,7 @@ process_random_tags() {
         else
             TAGS="$selected_tags"
         fi
-        TAGS=$(echo "$TAGS" | sed 's/ *$//')
+        TAGS="${TAGS%"${TAGS##*[![:space:]]}"}"
     fi
 }
 
@@ -147,9 +148,10 @@ while [[ "$#" -gt 0 ]]; do
         --list-pools) LIST_POOLS=true ;;
         --search-pools) SEARCH_POOLS="$2"; LIST_POOLS=true; shift ;;
         --random-tags) RANDOM_TAGS_COUNT="$2"; shift ;;
-        -cc|--clean-cache) CLEAN_MODE=true ;;
-        -cf|--clean-force) CLEAN_MODE=true; FORCE_CLEAN=true ;; 
-        -h|--help)
+         -cc|--clean-cache) CLEAN_MODE=true ;;
+         -cf|--clean-force) CLEAN_MODE=true; FORCE_CLEAN=true ;;
+         --init) INIT_MODE=true ;;
+         -h|--help)
             echo "Usage: $0 [options]"
             echo "  -t, --tags           Tags (e.g. 'scenic sky')"
             echo "  -r, --rating         s/q/e (default: s)"
@@ -160,9 +162,10 @@ while [[ "$#" -gt 0 ]]; do
             echo "  -m, --min-score      Minimum score filter (optional)"
             echo "  -a, --artist         Filter by artist/uploader (optional)"
             echo "  -P, --pool           Use pool ID instead of tag search"
-             echo "  -cc, --clean-cache   Clean all preload_* folders (keeps current.jpg)"
-             echo "  -cf, --clean-force   Clean without confirmation"
-             echo "  --dry-run            Show matching results without downloading"
+              echo "  -cc, --clean-cache   Clean all preload_* folders (keeps current.jpg)"
+              echo "  -cf, --clean-force   Clean without confirmation"
+              echo "  --init               Copy config file to user config directory"
+              echo "  --dry-run            Show matching results without downloading"
              echo "  --discover-tags      Discover popular tags"
               echo "  --discover-artists   Discover artists"
               echo "  --list-pools         List available pools"
@@ -173,6 +176,20 @@ while [[ "$#" -gt 0 ]]; do
     esac
     shift
 done
+
+# --- Init Mode ---
+if $INIT_MODE; then
+    config_src="$(dirname "$0")/konapaper.conf"
+    config_dest="$HOME/.config/konapaper/konapaper.conf"
+    if [[ ! -f "$config_src" ]]; then
+        echo "Error: Source config file not found at $config_src"
+        exit 1
+    fi
+    mkdir -p "$HOME/.config/konapaper"
+    cp "$config_src" "$config_dest"
+    echo "Config file copied to $config_dest"
+    exit 0
+fi
 
 # Process random tags if specified
 process_random_tags
