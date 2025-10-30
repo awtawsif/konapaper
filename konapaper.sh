@@ -22,6 +22,10 @@ PRELOAD_COUNT=3
 DRY_RUN=false
 CLEAN_MODE=false
 FORCE_CLEAN=false
+DISCOVER_TAGS=false
+DISCOVER_ARTISTS=false
+LIST_POOLS=false
+SEARCH_POOLS=""
 
 
 # --- Config ---
@@ -138,6 +142,10 @@ while [[ "$#" -gt 0 ]]; do
         -a|--artist) ARTIST="$2"; shift ;;
         -P|--pool) POOL_ID="$2"; shift ;;
         --dry-run) DRY_RUN=true ;;
+        --discover-tags) DISCOVER_TAGS=true ;;
+        --discover-artists) DISCOVER_ARTISTS=true ;;
+        --list-pools) LIST_POOLS=true ;;
+        --search-pools) SEARCH_POOLS="$2"; LIST_POOLS=true; shift ;;
         -cc|--clean-cache) CLEAN_MODE=true ;;
         -cf|--clean-force) CLEAN_MODE=true; FORCE_CLEAN=true ;;
         -h|--help)
@@ -151,10 +159,14 @@ while [[ "$#" -gt 0 ]]; do
             echo "  -m, --min-score      Minimum score filter (optional)"
             echo "  -a, --artist         Filter by artist/uploader (optional)"
             echo "  -P, --pool           Use pool ID instead of tag search"
-            echo "  -cc, --clean-cache   Clean all preload_* folders (keeps current.jpg)"
-            echo "  -cf, --clean-force   Clean without confirmation"
-            echo "  --dry-run            Show matching results without downloading"
-            exit 0 ;;
+             echo "  -cc, --clean-cache   Clean all preload_* folders (keeps current.jpg)"
+             echo "  -cf, --clean-force   Clean without confirmation"
+             echo "  --dry-run            Show matching results without downloading"
+             echo "  --discover-tags      Discover popular tags"
+             echo "  --discover-artists   Discover artists"
+             echo "  --list-pools         List available pools"
+             echo "  --search-pools       Search pools by name"
+             exit 0 ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
@@ -170,9 +182,13 @@ echo "  Max file size: $MAX_FILE_SIZE"
 [[ -n "$MIN_SCORE" ]] && echo "  Min score: $MIN_SCORE"
 [[ -n "$ARTIST" ]] && echo "  Artist: $ARTIST"
 [[ -n "$POOL_ID" ]] && echo "  Pool ID: $POOL_ID"
-$DRY_RUN && echo "  Dry run: enabled"
-$CLEAN_MODE && echo "  Clean mode: enabled"
-$FORCE_CLEAN && echo "  Force clean: enabled"
+ $DRY_RUN && echo "  Dry run: enabled"
+ $DISCOVER_TAGS && echo "  Tag discovery: enabled"
+ $DISCOVER_ARTISTS && echo "  Artist discovery: enabled"
+ $LIST_POOLS && echo "  Pool listing: enabled"
+ [[ -n "$SEARCH_POOLS" ]] && echo "  Pool search: $SEARCH_POOLS"
+ $CLEAN_MODE && echo "  Clean mode: enabled"
+ $FORCE_CLEAN && echo "  Force clean: enabled"
 
 MAX_FILE_SIZE_BYTES=$(convert_to_bytes "$MAX_FILE_SIZE")
 
@@ -235,7 +251,10 @@ download_wallpaper() {
 
     if [[ "$DRY_RUN" == true ]]; then
         echo "---- Available Posts ----"
-        jq -r 'if type == "array" then .[] else .posts? // . end | [.id, .file_url, (.file_size|tostring), .width, .height] | @tsv' "$json"
+        printf "ID\tScore\tAuthor\tWidth\tHeight\tSize\tTags\n"
+        jq -r 'if type == "array" then .[] else .posts? // . end |
+               [.id, (.score // 0), (.author // "unknown"),
+                .width, .height, (.file_size|tostring), (.tags | .[0:50])] | @tsv' "$json"
         rm -f "$json"
         return 0
     fi
@@ -307,6 +326,62 @@ select_next_wallpaper() {
     fi
 }
 
+# --- Discovery Functions ---
+discover_tags() {
+    local pattern="${1:-}"
+    local order="${2:-count}"
+    local limit="${3:-20}"
+
+    echo "Discovering tags..."
+    local api_url="${BASE_URL}/tag.xml?order=${order}&limit=${limit}"
+    [[ -n "$pattern" ]] && api_url="${api_url}&name_pattern=${pattern}"
+
+    local xml
+    xml=$(mktemp)
+    if curl -sf "$api_url" > "$xml"; then
+        xmllint --xpath '//tag' "$xml" | sed -n 's/.*name="\([^"]*\)".*count="\([^"]*\)".*/\1 (\2 posts)/p' | head -20
+    else
+        echo "Error: Failed to fetch tags"
+    fi
+    rm -f "$xml"
+}
+
+discover_artists() {
+    local pattern="${1:-}"
+    local limit="${2:-20}"
+
+    echo "Discovering artists..."
+    local api_url="${BASE_URL}/artist.xml?order=name&limit=${limit}"
+    [[ -n "$pattern" ]] && api_url="${api_url}&name=${pattern}"
+
+    local xml
+    xml=$(mktemp)
+    if curl -sf "$api_url" > "$xml"; then
+        xmllint --xpath '//artist' "$xml" | sed -n 's/.*name="\([^"]*\)".*/\1/p' | head -20
+    else
+        echo "Error: Failed to fetch artists"
+    fi
+    rm -f "$xml"
+}
+
+list_pools() {
+    local query="${1:-}"
+    local limit="${2:-20}"
+
+    echo "Listing pools..."
+    local api_url="${BASE_URL}/pool.xml?limit=${limit}"
+    [[ -n "$query" ]] && api_url="${api_url}&query=${query}"
+
+    local xml
+    xml=$(mktemp)
+    if curl -sf "$api_url" > "$xml"; then
+        xmllint --xpath '//pool' "$xml" | sed -n 's/.*id="\([^"]*\)".*name="\([^"]*\)".*post_count="\([^"]*\)".*/\1: \2 (\3 posts)/p' | head -20
+    else
+        echo "Error: Failed to fetch pools"
+    fi
+    rm -f "$xml"
+}
+
 # --- Main ---
 if ! pgrep -x "swww-daemon" >/dev/null; then
     swww-daemon &
@@ -315,6 +390,25 @@ fi
 
 if [[ "$DRY_RUN" == true ]]; then
     download_wallpaper "/dev/null"
+    flock -u 9
+    exit 0
+fi
+
+# --- Discovery Modes ---
+if $DISCOVER_TAGS; then
+    discover_tags
+    flock -u 9
+    exit 0
+fi
+
+if $DISCOVER_ARTISTS; then
+    discover_artists
+    flock -u 9
+    exit 0
+fi
+
+if $LIST_POOLS; then
+    list_pools "$SEARCH_POOLS"
     flock -u 9
     exit 0
 fi
