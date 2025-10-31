@@ -27,6 +27,7 @@ DISCOVER_TAGS=false
 DISCOVER_ARTISTS=false
 LIST_POOLS=false
 SEARCH_POOLS=""
+EXPORT_TAGS=false
 
 
 # --- Config ---
@@ -43,6 +44,10 @@ load_config() {
     if [[ -f "$CONFIG_FILE" ]]; then
         # shellcheck source=/dev/null
         source "$CONFIG_FILE"
+    fi
+    EXPORTED_TAGS_FILE=${EXPORTED_TAGS_FILE:-"$HOME/.config/konapaper/discovered_tags.txt"}
+    if [[ -f "$EXPORTED_TAGS_FILE" ]]; then
+        mapfile -t RANDOM_TAGS_LIST < "$EXPORTED_TAGS_FILE"
     fi
 }
 
@@ -61,7 +66,8 @@ process_random_tags() {
 
 # Load config before parsing CLI args
 load_config
-RANDOM_TAGS_COUNT=${RANDOM_TAGS_COUNT:-0}
+MAX_PRELOAD_CACHE=${MAX_PRELOAD_CACHE:-10}
+DISCOVER_LIMIT=${DISCOVER_LIMIT:-20}
 # --- Helpers ---
 convert_to_bytes() {
     local size_str="$1"
@@ -147,8 +153,9 @@ while [[ "$#" -gt 0 ]]; do
         --discover-artists) DISCOVER_ARTISTS=true ;;
         --list-pools) LIST_POOLS=true ;;
         --search-pools) SEARCH_POOLS="$2"; LIST_POOLS=true; shift ;;
-        --random-tags) RANDOM_TAGS_COUNT="$2"; shift ;;
-         -cc|--clean-cache) CLEAN_MODE=true ;;
+         --random-tags) RANDOM_TAGS_COUNT="$2"; shift ;;
+         --export-tags) EXPORT_TAGS=true ;;
+          -cc|--clean-cache) CLEAN_MODE=true ;;
          -cf|--clean-force) CLEAN_MODE=true; FORCE_CLEAN=true ;;
          --init) INIT_MODE=true ;;
          -h|--help)
@@ -158,19 +165,20 @@ while [[ "$#" -gt 0 ]]; do
             echo "  -o, --order          random, score, date"
             echo "  -l, --limit          Number of posts to query (default: 50)"
              echo "  -p, --page           Page number, 'random', or 'MIN-MAX' range (default: 1)"
-            echo "  -s, --max-file-size  Max file size (e.g. 500KB, 2MB, default: 2MB)"
+             echo "  -s, --max-file-size  Max file size (e.g. 500KB, 2MB; 0 to disable, default: 2MB)"
             echo "  -m, --min-score      Minimum score filter (optional)"
             echo "  -a, --artist         Filter by artist/uploader (optional)"
             echo "  -P, --pool           Use pool ID instead of tag search"
-              echo "  -cc, --clean-cache   Clean all preload_* folders (keeps current.jpg)"
+               echo "  -cc, --clean-cache   Clean all preload_* folders (keeps current.jpg)"
               echo "  -cf, --clean-force   Clean without confirmation"
               echo "  --init               Copy config file to user config directory"
               echo "  --dry-run            Show matching results without downloading"
-             echo "  --discover-tags      Discover popular tags"
-              echo "  --discover-artists   Discover artists"
-              echo "  --list-pools         List available pools"
-              echo "  --search-pools       Search pools by name"
-              echo "  --random-tags        Number of random tags to select from config list"
+              echo "  --discover-tags      Discover popular tags"
+               echo "  --discover-artists   Discover artists"
+               echo "  --list-pools         List available pools"
+               echo "  --search-pools       Search pools by name"
+               echo "  --random-tags        Number of random tags to select from config list"
+               echo "  --export-tags        Export discovered tags to file (use with --discover-tags)"
              exit 0 ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
@@ -220,12 +228,7 @@ LOCKFILE="/tmp/hypr_wallpaper_setter.lock"
 CACHE_DIR="$HOME/.cache/hypr_wallpapers"
 mkdir -p "$CACHE_DIR"
 
-if [[ "$RANDOM_TAGS_COUNT" -gt 0 ]]; then
-    ARGS_HASH=$(echo "random_${RATING}_${ORDER}_${MAX_FILE_SIZE_BYTES}_${MIN_SCORE}_${ARTIST}_${POOL_ID}" | md5sum | awk '{print $1}')
-else
-    ARGS_HASH=$(echo "${TAGS}_${RATING}_${ORDER}_${MAX_FILE_SIZE_BYTES}_${MIN_SCORE}_${ARTIST}_${POOL_ID}" | md5sum | awk '{print $1}')
-fi
-PRELOAD_DIR="$CACHE_DIR/preload_$ARGS_HASH"
+PRELOAD_DIR="$CACHE_DIR/preload_$RATING"
 mkdir -p "$PRELOAD_DIR"
 
 CURRENT_WALLPAPER="$CACHE_DIR/current.jpg"
@@ -287,12 +290,20 @@ download_wallpaper() {
     fi
 
     local IMAGE_URL
-    IMAGE_URL=$(jq -r --argjson max "$MAX_FILE_SIZE_BYTES" 'if type == "array" then . else .posts? // . end | map(select(.file_size != null and .file_size <= $max)) | .[].file_url' "$json" | shuf -n 1)
+    if (( MAX_FILE_SIZE_BYTES == 0 )); then
+        IMAGE_URL=$(jq -r 'if type == "array" then . else .posts? // . end | .[].file_url' "$json" | shuf -n 1)
+    else
+        IMAGE_URL=$(jq -r --argjson max "$MAX_FILE_SIZE_BYTES" 'if type == "array" then . else .posts? // . end | map(select(.file_size != null and .file_size <= $max)) | .[].file_url' "$json" | shuf -n 1)
+    fi
 
     rm -f "$json"
 
     if [ -z "$IMAGE_URL" ]; then
-        echo "No suitable image found under ${MAX_FILE_SIZE}."
+        if (( MAX_FILE_SIZE_BYTES == 0 )); then
+            echo "No suitable image found."
+        else
+            echo "No suitable image found under ${MAX_FILE_SIZE}."
+        fi
         return 1
     fi
 
@@ -305,7 +316,7 @@ download_wallpaper() {
 
     local size
     size=$(stat -c%s "$outfile")
-    if (( size > MAX_FILE_SIZE_BYTES )); then
+    if (( MAX_FILE_SIZE_BYTES > 0 && size > MAX_FILE_SIZE_BYTES )); then
         echo "Skipped (too large: $(human_readable_size "$size"))"
         rm -f "$outfile"
         return 1
@@ -324,16 +335,19 @@ set_wallpaper() {
 
 # --- Preload Handling ---
 preload_wallpapers() {
-    echo "Preloading up to $PRELOAD_COUNT wallpapers..."
     local existing
     existing=$(find "$PRELOAD_DIR" -type f -name "*.jpg" | wc -l)
-    if (( existing >= PRELOAD_COUNT )); then
-        echo "Preload cache already has $existing wallpapers."
+    local available_slots=$(( MAX_PRELOAD_CACHE - existing ))
+    if (( available_slots <= 0 )); then
+        echo "Preload cache full ($existing wallpapers)."
         return
     fi
-    local needed=$(( PRELOAD_COUNT - existing ))
-    echo "Need $needed new wallpapers."
-    for (( i=1; i<=needed; i++ )); do
+    local to_preload=$PRELOAD_COUNT
+    if (( to_preload > available_slots )); then
+        to_preload=$available_slots
+    fi
+    echo "Preloading up to $to_preload wallpapers..."
+    for (( i=1; i<=to_preload; i++ )); do
         local tmpfile="$PRELOAD_DIR/preload_$RANDOM.jpg"
         download_wallpaper "$tmpfile" &
         sleep 0.3
@@ -357,7 +371,7 @@ select_next_wallpaper() {
 discover_tags() {
     local pattern="${1:-}"
     local order="${2:-count}"
-    local limit="${3:-20}"
+    local limit="${3:-$DISCOVER_LIMIT}"
 
     echo "Discovering tags..."
     local api_url="${BASE_URL}/tag.xml?order=${order}&limit=${limit}"
@@ -366,7 +380,17 @@ discover_tags() {
     local xml
     xml=$(mktemp)
     if curl -sf "$api_url" > "$xml"; then
-        xmllint --xpath '//tag' "$xml" | sed -n 's/.*name="\([^"]*\)".*count="\([^"]*\)".*/\1 (\2 posts)/p' | head -20
+        local tags_output
+        tags_output=$(xmllint --xpath '//tag' "$xml" | sed -n 's/.*name="\([^"]*\)".*count="\([^"]*\)".*/\1 (\2 posts)/p' | head -"$limit")
+        if $EXPORT_TAGS; then
+            local tags_list
+            tags_list=$(xmllint --xpath '//tag' "$xml" | sed -n 's/.*name="\([^"]*\)".*/\1/p' | head -"$limit")
+            mkdir -p "$(dirname "$EXPORTED_TAGS_FILE")"
+            echo "$tags_list" > "$EXPORTED_TAGS_FILE"
+            echo "Exported $limit tags to $EXPORTED_TAGS_FILE"
+        else
+            echo "$tags_output"
+        fi
     else
         echo "Error: Failed to fetch tags"
     fi
@@ -375,7 +399,7 @@ discover_tags() {
 
 discover_artists() {
     local pattern="${1:-}"
-    local limit="${2:-20}"
+    local limit="${2:-$DISCOVER_LIMIT}"
 
     echo "Discovering artists..."
     local api_url="${BASE_URL}/artist.xml?order=name&limit=${limit}"
@@ -384,7 +408,7 @@ discover_artists() {
     local xml
     xml=$(mktemp)
     if curl -sf "$api_url" > "$xml"; then
-        xmllint --xpath '//artist' "$xml" | sed -n 's/.*name="\([^"]*\)".*/\1/p' | head -20
+        xmllint --xpath '//artist' "$xml" | sed -n 's/.*name="\([^"]*\)".*/\1/p' | head -"$limit"
     else
         echo "Error: Failed to fetch artists"
     fi
@@ -393,7 +417,7 @@ discover_artists() {
 
 list_pools() {
     local query="${1:-}"
-    local limit="${2:-20}"
+    local limit="${2:-$DISCOVER_LIMIT}"
 
     echo "Listing pools..."
     local api_url="${BASE_URL}/pool.xml?limit=${limit}"
@@ -402,7 +426,7 @@ list_pools() {
     local xml
     xml=$(mktemp)
     if curl -sf "$api_url" > "$xml"; then
-        xmllint --xpath '//pool' "$xml" | sed -n 's/.*id="\([^"]*\)".*name="\([^"]*\)".*post_count="\([^"]*\)".*/\1: \2 (\3 posts)/p' | head -20
+        xmllint --xpath '//pool' "$xml" | sed -n 's/.*id="\([^"]*\)".*name="\([^"]*\)".*post_count="\([^"]*\)".*/\1: \2 (\3 posts)/p' | head -"$limit"
     else
         echo "Error: Failed to fetch pools"
     fi

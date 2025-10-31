@@ -5,9 +5,9 @@ A powerful and flexible wallpaper rotator script for Hyprland, designed to fetch
 ## Features
 
 - **Advanced Filtering**: Search by tags, ratings (safe/questionable/explicit), minimum score, artist, and pool IDs
-- **Intelligent Caching**: Preloads wallpapers in the background for instant transitions
-- **Random Tag Selection**: Configure a list of favorite tags and use `--random-tags` to randomly select combinations (shared preload cache)
-- **Discovery Modes**: Explore popular tags, artists, and pools without downloading
+- **Intelligent Caching**: Preloads wallpapers in the background for instant transitions (configurable cache size per rating)
+- **Random Tag Selection**: Configure a list of favorite tags and use `--random-tags` to randomly select combinations (preload cache per rating); export discovered tags to override the list
+- **Discovery Modes**: Explore popular tags, artists, and pools without downloading (configurable limits)
 - **Dry Run Mode**: Preview available wallpapers without downloading
 - **Pool Support**: Download from curated collections of images
 - **Size Limits**: Filter wallpapers by maximum file size to optimize performance
@@ -65,7 +65,7 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 
 #### Advanced Filtering
 
-- **`MAX_FILE_SIZE`**: Maximum file size (e.g., `"500KB"`, `"2MB"`, `"1GB"`) (default: `"2MB"`)
+- **`MAX_FILE_SIZE`**: Maximum file size (e.g., `"500KB"`, `"2MB"`, `"1GB"`; set to `"0"` to disable) (default: `"2MB"`)
 - **`MIN_SCORE`**: Minimum score threshold (optional)
 - **`ARTIST`**: Filter by specific artist/uploader (optional)
 - **`POOL_ID`**: Download from a specific pool ID (overrides tag search) (optional)
@@ -78,6 +78,12 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 #### Cache and Preloading
 
 - **`PRELOAD_COUNT`**: Number of wallpapers to preload in background (default: 3)
+- **`MAX_PRELOAD_CACHE`**: Maximum wallpapers to keep in preload cache (default: 10)
+
+#### Discovery
+
+- **`DISCOVER_LIMIT`**: Number of items to fetch for discovery modes (default: 20)
+- **`EXPORTED_TAGS_FILE`**: Path to file where discovered tags are exported (default: ~/.config/konapaper/discovered_tags.txt)
 
 ## Usage
 
@@ -106,7 +112,7 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 | `--page` | `-p` | Page number, 'random', or 'MIN-MAX' range | 1 |
 | `--rating` | `-r` | Rating: s/q/e | s |
 | `--order` | `-o` | Order: random/score/date | random |
-| `--max-file-size` | `-s` | Max file size (e.g., 500KB, 2MB) | 2MB |
+| `--max-file-size` | `-s` | Max file size (e.g., 500KB, 2MB; 0 to disable) | 2MB |
 | `--min-score` | `-m` | Minimum score | None |
 | `--artist` | `-a` | Filter by artist | None |
 | `--pool` | `-P` | Pool ID | None |
@@ -116,6 +122,7 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 | `--list-pools` | | List available pools | false |
 | `--search-pools` | | Search pools by name | None |
 | `--random-tags` | | Number of random tags to select from config list | 0 |
+| `--export-tags` | | Export discovered tags to file (use with --discover-tags) | false |
 | `--clean-cache` | `-cc` | Clean preload cache | false |
 | `--clean-force` | `-cf` | Clean without confirmation | false |
 | `--init` | | Copy config file to user config directory | false |
@@ -156,6 +163,8 @@ This will display a table of matching posts with ID, score, author, dimensions, 
 # Force clean without confirmation
 ./konapaper.sh --clean-force
 ```
+
+The preload cache uses separate folders per rating (e.g., preload_s, preload_q), each limited to MAX_PRELOAD_CACHE wallpapers.
 
 ## Examples
 
@@ -202,7 +211,15 @@ Run with:
 ./konapaper.sh --random-tags 3
 ```
 
-The script will randomly select 3 tags from the list for each run, ensuring variety. All random tag runs share the same preload cache folder.
+The script will randomly select 3 tags from the list for each run, ensuring variety. Preload cache is per rating.
+
+Alternatively, discover and export tags:
+
+```bash
+./konapaper.sh --discover-tags --export-tags
+```
+
+This saves the top tags to EXPORTED_TAGS_FILE, which overrides RANDOM_TAGS_LIST if the file exists.
 
 ## API Documentation
 
