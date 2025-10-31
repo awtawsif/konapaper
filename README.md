@@ -10,7 +10,7 @@ A powerful and flexible wallpaper rotator script for Hyprland, designed to fetch
 - **Discovery Modes**: Explore popular tags, artists, and pools without downloading (configurable limits)
 - **Dry Run Mode**: Preview available wallpapers without downloading
 - **Pool Support**: Download from curated collections of images
-- **Size Limits**: Filter wallpapers by maximum file size to optimize performance
+- **Size Limits**: Filter wallpapers by minimum and maximum file size to optimize performance
 - **Hyprland Integration**: Native support for Hyprland's `swww` wallpaper daemon
 - **Configurable**: Extensive configuration options via config file or command-line arguments
 
@@ -66,6 +66,7 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 #### Advanced Filtering
 
 - **`MAX_FILE_SIZE`**: Maximum file size (e.g., `"500KB"`, `"2MB"`, `"1GB"`; set to `"0"` to disable) (default: `"2MB"`)
+- **`MIN_FILE_SIZE`**: Minimum file size (e.g., `"100KB"`, `"1MB"`; set to `"0"` to disable) (default: disabled)
 - **`MIN_SCORE`**: Minimum score threshold (optional)
 - **`ARTIST`**: Filter by specific artist/uploader (optional)
 - **`POOL_ID`**: Download from a specific pool ID (overrides tag search) (optional)
@@ -113,19 +114,20 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 | `--rating` | `-r` | Rating: s/q/e | s |
 | `--order` | `-o` | Order: random/score/date | random |
 | `--max-file-size` | `-s` | Max file size (e.g., 500KB, 2MB; 0 to disable) | 2MB |
+| `--min-file-size` | `-z` | Min file size (e.g., 100KB, 1MB; 0 to disable) | disabled |
 | `--min-score` | `-m` | Minimum score | None |
 | `--artist` | `-a` | Filter by artist | None |
 | `--pool` | `-P` | Pool ID | None |
-| `--dry-run` | | Show results without downloading | false |
-| `--discover-tags` | | Discover popular tags | false |
-| `--discover-artists` | | Discover artists | false |
-| `--list-pools` | | List available pools | false |
-| `--search-pools` | | Search pools by name | None |
-| `--random-tags` | | Number of random tags to select from config list | 0 |
-| `--export-tags` | | Export discovered tags to file (use with --discover-tags) | false |
+| `--dry-run` | `-d` | Show results without downloading | false |
+| `--discover-tags` | `-D` | Discover popular tags | false |
+| `--discover-artists` | `-A` | Discover artists | false |
+| `--list-pools` | `-L` | List available pools | false |
+| `--search-pools` | `-S` | Search pools by name | None |
+| `--random-tags` | `-R` | Number of random tags to select from config list | 0 |
+| `--export-tags` | `-E` | Export discovered tags to file (use with --discover-tags) | false |
 | `--clean-cache` | `-cc` | Clean preload cache | false |
 | `--clean-force` | `-cf` | Clean without confirmation | false |
-| `--init` | | Copy config file to user config directory | false |
+| `--init` | `-I` | Copy config file to user config directory | false |
 | `--help` | `-h` | Show help | |
 
 ### Discovery Modes
@@ -184,7 +186,7 @@ Set up a cron job or systemd timer to change wallpapers periodically:
 ./konapaper.sh --tags "landscape anime" --rating "s" --min-score 15
 
 # High-quality artwork
-./konapaper.sh --tags "original" --rating "s" --min-score 50 --max-file-size "5MB"
+./konapaper.sh --tags "original" --rating "s" --min-score 50 --min-file-size "500KB" --max-file-size "5MB"
 
 # Artist-specific wallpapers
 ./konapaper.sh --artist "k-eke" --rating "s"
@@ -249,6 +251,9 @@ bash -n konapaper.sh
 
 # Dry run test
 ./konapaper.sh --dry-run --tags "test" --limit 1
+
+# Test with size filters
+./konapaper.sh --dry-run --min-file-size "500KB" --max-file-size "2MB" --tags "landscape" --limit 5
 ```
 
 ### Code Style

@@ -15,6 +15,7 @@ PAGE=1
 RATING="s"
 ORDER="random"
 MAX_FILE_SIZE="2MB"
+MIN_FILE_SIZE=""
 MIN_SCORE=""
 ARTIST=""
 POOL_ID=""
@@ -144,20 +145,21 @@ while [[ "$#" -gt 0 ]]; do
             shift ;;
         -r|--rating) RATING="$2"; shift ;;
         -o|--order) ORDER="$2"; shift ;;
-        -s|--max-file-size) MAX_FILE_SIZE="$2"; shift ;;
+         -s|--max-file-size) MAX_FILE_SIZE="$2"; shift ;;
+         -z|--min-file-size) MIN_FILE_SIZE="$2"; shift ;;
         -m|--min-score) MIN_SCORE="$2"; shift ;;
         -a|--artist) ARTIST="$2"; shift ;;
         -P|--pool) POOL_ID="$2"; shift ;;
-        --dry-run) DRY_RUN=true ;;
-        --discover-tags) DISCOVER_TAGS=true ;;
-        --discover-artists) DISCOVER_ARTISTS=true ;;
-        --list-pools) LIST_POOLS=true ;;
-        --search-pools) SEARCH_POOLS="$2"; LIST_POOLS=true; shift ;;
-         --random-tags) RANDOM_TAGS_COUNT="$2"; shift ;;
-         --export-tags) EXPORT_TAGS=true ;;
+        -d|--dry-run) DRY_RUN=true ;;
+        -D|--discover-tags) DISCOVER_TAGS=true ;;
+        -A|--discover-artists) DISCOVER_ARTISTS=true ;;
+        -L|--list-pools) LIST_POOLS=true ;;
+        -S|--search-pools) SEARCH_POOLS="$2"; LIST_POOLS=true; shift ;;
+         -R|--random-tags) RANDOM_TAGS_COUNT="$2"; shift ;;
+         -E|--export-tags) EXPORT_TAGS=true ;;
           -cc|--clean-cache) CLEAN_MODE=true ;;
-         -cf|--clean-force) CLEAN_MODE=true; FORCE_CLEAN=true ;;
-         --init) INIT_MODE=true ;;
+          -cf|--clean-force) CLEAN_MODE=true; FORCE_CLEAN=true ;;
+          -I|--init) INIT_MODE=true ;;
          -h|--help)
             echo "Usage: $0 [options]"
             echo "  -t, --tags           Tags (e.g. 'scenic sky')"
@@ -166,19 +168,20 @@ while [[ "$#" -gt 0 ]]; do
             echo "  -l, --limit          Number of posts to query (default: 50)"
              echo "  -p, --page           Page number, 'random', or 'MIN-MAX' range (default: 1)"
              echo "  -s, --max-file-size  Max file size (e.g. 500KB, 2MB; 0 to disable, default: 2MB)"
+            echo "  -z, --min-file-size  Min file size (e.g. 100KB, 1MB; 0 to disable, default: disabled)"
             echo "  -m, --min-score      Minimum score filter (optional)"
             echo "  -a, --artist         Filter by artist/uploader (optional)"
             echo "  -P, --pool           Use pool ID instead of tag search"
                echo "  -cc, --clean-cache   Clean all preload_* folders (keeps current.jpg)"
-              echo "  -cf, --clean-force   Clean without confirmation"
-              echo "  --init               Copy config file to user config directory"
-              echo "  --dry-run            Show matching results without downloading"
-              echo "  --discover-tags      Discover popular tags"
-               echo "  --discover-artists   Discover artists"
-               echo "  --list-pools         List available pools"
-               echo "  --search-pools       Search pools by name"
-               echo "  --random-tags        Number of random tags to select from config list"
-               echo "  --export-tags        Export discovered tags to file (use with --discover-tags)"
+               echo "  -cf, --clean-force   Clean without confirmation"
+               echo "  -I, --init           Copy config file to user config directory"
+               echo "  -d, --dry-run        Show matching results without downloading"
+               echo "  -D, --discover-tags  Discover popular tags"
+                echo "  -A, --discover-artists Discover artists"
+                echo "  -L, --list-pools     List available pools"
+                echo "  -S, --search-pools   Search pools by name"
+                echo "  -R, --random-tags    Number of random tags to select from config list"
+                echo "  -E, --export-tags    Export discovered tags to file (use with --discover-tags)"
              exit 0 ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
@@ -208,6 +211,7 @@ echo "  Page: $PAGE"
 echo "  Rating: $RATING"
 echo "  Order: $ORDER"
 echo "  Max file size: $MAX_FILE_SIZE"
+[[ -n "$MIN_FILE_SIZE" ]] && echo "  Min file size: $MIN_FILE_SIZE"
 [[ -n "$TAGS" ]] && echo "  Tags: $TAGS"
 [[ -n "$MIN_SCORE" ]] && echo "  Min score: $MIN_SCORE"
 [[ -n "$ARTIST" ]] && echo "  Artist: $ARTIST"
@@ -222,6 +226,7 @@ echo "  Max file size: $MAX_FILE_SIZE"
   $FORCE_CLEAN && echo "  Force clean: enabled"
 
 MAX_FILE_SIZE_BYTES=$(convert_to_bytes "$MAX_FILE_SIZE")
+MIN_FILE_SIZE_BYTES=$(convert_to_bytes "$MIN_FILE_SIZE")
 
 # --- Paths ---
 LOCKFILE="/tmp/hypr_wallpaper_setter.lock"
@@ -282,27 +287,33 @@ download_wallpaper() {
     if [[ "$DRY_RUN" == true ]]; then
         echo "---- Available Posts ----"
         printf "ID\tScore\tAuthor\tWidth\tHeight\tSize\tTags\n"
-        jq -r 'if type == "array" then .[] else .posts? // . end |
-               [.id, (.score // 0), (.author // "unknown"),
-                .width, .height, (.file_size|tostring), (.tags | .[0:50])] | @tsv' "$json"
+        if (( MAX_FILE_SIZE_BYTES == 0 && MIN_FILE_SIZE_BYTES == 0 )); then
+            jq -r 'if type == "array" then . else .posts? // . end | map([.id, (.score // 0), (.author // "unknown"), .width, .height, (.file_size|tostring), (.tags | .[0:50])]) | .[] | @tsv' "$json"
+        else
+            jq -r --argjson max "$MAX_FILE_SIZE_BYTES" --argjson min "$MIN_FILE_SIZE_BYTES" 'if type == "array" then . else .posts? // . end | map(select(type == "object" and .file_size != null and (.file_size <= $max or $max == 0) and (.file_size >= $min or $min == 0))) | map([.id, (.score // 0), (.author // "unknown"), .width, .height, (.file_size|tostring), (.tags | .[0:50])]) | .[] | @tsv' "$json"
+        fi
         rm -f "$json"
         return 0
     fi
 
     local IMAGE_URL
-    if (( MAX_FILE_SIZE_BYTES == 0 )); then
+    if (( MAX_FILE_SIZE_BYTES == 0 && MIN_FILE_SIZE_BYTES == 0 )); then
         IMAGE_URL=$(jq -r 'if type == "array" then . else .posts? // . end | .[].file_url' "$json" | shuf -n 1)
     else
-        IMAGE_URL=$(jq -r --argjson max "$MAX_FILE_SIZE_BYTES" 'if type == "array" then . else .posts? // . end | map(select(.file_size != null and .file_size <= $max)) | .[].file_url' "$json" | shuf -n 1)
+        IMAGE_URL=$(jq -r --argjson max "$MAX_FILE_SIZE_BYTES" --argjson min "$MIN_FILE_SIZE_BYTES" 'if type == "array" then . else .posts? // . end | map(select(type == "object" and .file_size != null and (.file_size <= $max or $max == 0) and (.file_size >= $min or $min == 0))) | .[].file_url' "$json" | shuf -n 1)
     fi
 
     rm -f "$json"
 
     if [ -z "$IMAGE_URL" ]; then
-        if (( MAX_FILE_SIZE_BYTES == 0 )); then
+        if (( MAX_FILE_SIZE_BYTES == 0 && MIN_FILE_SIZE_BYTES == 0 )); then
             echo "No suitable image found."
-        else
+        elif (( MAX_FILE_SIZE_BYTES > 0 && MIN_FILE_SIZE_BYTES == 0 )); then
             echo "No suitable image found under ${MAX_FILE_SIZE}."
+        elif (( MAX_FILE_SIZE_BYTES == 0 && MIN_FILE_SIZE_BYTES > 0 )); then
+            echo "No suitable image found over ${MIN_FILE_SIZE}."
+        else
+            echo "No suitable image found between ${MIN_FILE_SIZE} and ${MAX_FILE_SIZE}."
         fi
         return 1
     fi
@@ -318,6 +329,11 @@ download_wallpaper() {
     size=$(stat -c%s "$outfile")
     if (( MAX_FILE_SIZE_BYTES > 0 && size > MAX_FILE_SIZE_BYTES )); then
         echo "Skipped (too large: $(human_readable_size "$size"))"
+        rm -f "$outfile"
+        return 1
+    fi
+    if (( MIN_FILE_SIZE_BYTES > 0 && size < MIN_FILE_SIZE_BYTES )); then
+        echo "Skipped (too small: $(human_readable_size "$size"))"
         rm -f "$outfile"
         return 1
     fi
