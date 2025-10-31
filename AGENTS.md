@@ -4,8 +4,8 @@
 - **Lint:** `shellcheck konapaper.sh`
 - **Syntax Check:** `bash -n konapaper.sh`
 - **Dry Run Test:** `./konapaper.sh --dry-run --tags "test"`
-- **Run with specific parameters:** `./konapaper.sh --dry-run --tags "landscape" --rating "s" --limit 5`
 - **Single Test:** `./konapaper.sh --dry-run --tags "test" --limit 1`
+- **Full Test Suite:** `./konapaper.sh --dry-run --tags "landscape" --rating "s" --limit 5`
 
 ## Code Style Guidelines
 - **Shebang:** `#!/bin/bash`
