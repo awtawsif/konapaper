@@ -6,6 +6,7 @@
 - **Dry Run Test:** `./konapaper.sh --dry-run --tags "test"`
 - **Single Test:** `./konapaper.sh --dry-run --tags "test" --limit 1`
 - **Full Test Suite:** `./konapaper.sh --dry-run --tags "landscape" --rating "s" --limit 5`
+- **Size Filter Test:** `./konapaper.sh --dry-run --min-file-size "500KB" --max-file-size "2MB" --tags "landscape" --limit 5`
 
 ## Code Style Guidelines
 - **Shebang:** `#!/bin/bash`
@@ -19,3 +20,4 @@
 - **Security:** Quote all variables, validate inputs, use `mktemp` for temp files
 - **Comments:** Add function headers, explain complex logic, use `# --- Section ---` for major sections
 - **Imports:** Source config files with `source "$file"` after shellcheck disable comment
+- **File Descriptors:** Use exec redirection for locks (e.g., `exec 9>"$LOCKFILE"`)
