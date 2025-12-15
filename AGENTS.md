@@ -2,11 +2,10 @@
 
 ## Build/Lint/Test Commands
 - **Lint:** `shellcheck konapaper.sh`
-- **Syntax Check:** `bash -n konapaper.sh`
-- **Dry Run Test:** `./konapaper.sh --dry-run --tags "test"`
+- **Syntax:** `bash -n konapaper.sh`
 - **Single Test:** `./konapaper.sh --dry-run --tags "test" --limit 1`
-- **Full Test Suite:** `./konapaper.sh --dry-run --tags "landscape" --rating "s" --limit 5`
-- **Size Filter Test:** `./konapaper.sh --dry-run --min-file-size "500KB" --max-file-size "2MB" --tags "landscape" --limit 5`
+- **Full Test:** `./konapaper.sh --dry-run --tags "landscape" --rating "s" --limit 5`
+- **Size Test:** `./konapaper.sh --dry-run --min-file-size "500KB" --max-file-size "2MB" --tags "landscape" --limit 5`
 
 ## Code Style Guidelines
 - **Shebang:** `#!/bin/bash`

@@ -67,6 +67,11 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 
 - **`MAX_FILE_SIZE`**: Maximum file size (e.g., `"500KB"`, `"2MB"`, `"1GB"`; set to `"0"` to disable) (default: `"2MB"`)
 - **`MIN_FILE_SIZE`**: Minimum file size (e.g., `"100KB"`, `"1MB"`; set to `"0"` to disable) (default: disabled)
+- **`MIN_WIDTH`**: Minimum width in pixels (e.g., `"1920"`) (default: disabled)
+- **`MAX_WIDTH`**: Maximum width in pixels (e.g., `"3840"`) (default: disabled)
+- **`MIN_HEIGHT`**: Minimum height in pixels (e.g., `"1080"`) (default: disabled)
+- **`MAX_HEIGHT`**: Maximum height in pixels (e.g., `"2160"`) (default: disabled)
+- **`ASPECT_RATIO`**: Filter by aspect ratio (e.g., `"16:9"`, `"21:9"`, `"4:3"`, `"1:1"`, `"3:2"`, `"5:4"`, `"32:9"` or custom `"X:Y"`) (default: disabled)
 - **`MIN_SCORE`**: Minimum score threshold (optional)
 - **`ARTIST`**: Filter by specific artist/uploader (optional)
 - **`POOL_ID`**: Download from a specific pool ID (overrides tag search) (optional)
@@ -115,6 +120,11 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 | `--order` | `-o` | Order: random/score/date | random |
 | `--max-file-size` | `-s` | Max file size (e.g., 500KB, 2MB; 0 to disable) | 2MB |
 | `--min-file-size` | `-z` | Min file size (e.g., 100KB, 1MB; 0 to disable) | disabled |
+| `--min-width` | | Minimum width in pixels (e.g., 1920) | disabled |
+| `--max-width` | | Maximum width in pixels (e.g., 3840) | disabled |
+| `--min-height` | | Minimum height in pixels (e.g., 1080) | disabled |
+| `--max-height` | | Maximum height in pixels (e.g., 2160) | disabled |
+| `--aspect-ratio` | | Aspect ratio (e.g., 16:9, 21:9, 4:3, 1:1, 3:2, 5:4, 32:9 or custom X:Y) | disabled |
 | `--min-score` | `-m` | Minimum score | None |
 | `--artist` | `-a` | Filter by artist | None |
 | `--pool` | `-P` | Pool ID | None |
@@ -190,6 +200,28 @@ Set up a cron job or systemd timer to change wallpapers periodically:
 
 # Artist-specific wallpapers
 ./konapaper.sh --artist "k-eke" --rating "s"
+```
+
+### Resolution Filtering
+
+```bash
+# Only Full HD (1920x1080) and higher
+./konapaper.sh --min-width 1920 --min-height 1080
+
+# 16:9 aspect ratio wallpapers
+./konapaper.sh --aspect-ratio 16:9
+
+# Ultra-wide 21:9 wallpapers
+./konapaper.sh --aspect-ratio 21:9
+
+# 4K wallpapers (3840x2160 range)
+./konapaper.sh --min-width 3840 --min-height 2160 --max-width 4000 --max-height 2300
+
+# Custom aspect ratio (e.g., 16:10)
+./konapaper.sh --aspect-ratio 16:10
+
+# Combined filtering: 16:9, Full HD minimum, reasonable file size
+./konapaper.sh --aspect-ratio 16:9 --min-width 1920 --min-height 1080 --min-file-size "1MB" --max-file-size "8MB"
 ```
 
 ### Pool Downloads

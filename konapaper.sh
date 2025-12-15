@@ -16,6 +16,11 @@ RATING="s"
 ORDER="random"
 MAX_FILE_SIZE="2MB"
 MIN_FILE_SIZE=""
+MIN_WIDTH=""
+MAX_WIDTH=""
+MIN_HEIGHT=""
+MAX_HEIGHT=""
+ASPECT_RATIO=""
 MIN_SCORE=""
 ARTIST=""
 POOL_ID=""
@@ -98,6 +103,27 @@ human_readable_size() {
     fi
 }
 
+parse_aspect_ratio() {
+    local ratio="$1"
+    case "$ratio" in
+        "16:9") echo "1.78" ;;
+        "21:9") echo "2.37" ;;
+        "4:3") echo "1.33" ;;
+        "1:1") echo "1.00" ;;
+        "3:2") echo "1.50" ;;
+        "5:4") echo "1.25" ;;
+        "32:9") echo "3.56" ;;
+        *)
+            if [[ "$ratio" =~ ^([0-9]+):([0-9]+)$ ]]; then
+                awk "BEGIN {printf \"%.2f\", ${BASH_REMATCH[1]}/${BASH_REMATCH[2]}}"
+            else
+                echo "Error: invalid aspect ratio '$ratio' (use format like '16:9')" >&2
+                exit 1
+            fi
+            ;;
+    esac
+}
+
 parse_page_argument() {
     local arg="$1"
 
@@ -147,8 +173,13 @@ while [[ "$#" -gt 0 ]]; do
         -o|--order) ORDER="$2"; shift ;;
          -s|--max-file-size) MAX_FILE_SIZE="$2"; shift ;;
          -z|--min-file-size) MIN_FILE_SIZE="$2"; shift ;;
-        -m|--min-score) MIN_SCORE="$2"; shift ;;
-        -a|--artist) ARTIST="$2"; shift ;;
+         --min-width) MIN_WIDTH="$2"; shift ;;
+         --max-width) MAX_WIDTH="$2"; shift ;;
+         --min-height) MIN_HEIGHT="$2"; shift ;;
+         --max-height) MAX_HEIGHT="$2"; shift ;;
+         --aspect-ratio) ASPECT_RATIO="$2"; shift ;;
+         -m|--min-score) MIN_SCORE="$2"; shift ;;
+         -a|--artist) ARTIST="$2"; shift ;;
         -P|--pool) POOL_ID="$2"; shift ;;
         -d|--dry-run) DRY_RUN=true ;;
         -D|--discover-tags) DISCOVER_TAGS=true ;;
@@ -169,6 +200,11 @@ while [[ "$#" -gt 0 ]]; do
              echo "  -p, --page           Page number, 'random', or 'MIN-MAX' range (default: 1)"
              echo "  -s, --max-file-size  Max file size (e.g. 500KB, 2MB; 0 to disable, default: 2MB)"
             echo "  -z, --min-file-size  Min file size (e.g. 100KB, 1MB; 0 to disable, default: disabled)"
+            echo "  --min-width         Minimum width in pixels (e.g., 1920)"
+            echo "  --max-width         Maximum width in pixels (e.g., 3840)"
+            echo "  --min-height        Minimum height in pixels (e.g., 1080)"
+            echo "  --max-height        Maximum height in pixels (e.g., 2160)"
+            echo "  --aspect-ratio      Aspect ratio (e.g., 16:9, 21:9, 4:3, 1:1, 3:2, 5:4, 32:9 or custom X:Y)"
             echo "  -m, --min-score      Minimum score filter (optional)"
             echo "  -a, --artist         Filter by artist/uploader (optional)"
             echo "  -P, --pool           Use pool ID instead of tag search"
@@ -212,6 +248,11 @@ echo "  Rating: $RATING"
 echo "  Order: $ORDER"
 echo "  Max file size: $MAX_FILE_SIZE"
 [[ -n "$MIN_FILE_SIZE" ]] && echo "  Min file size: $MIN_FILE_SIZE"
+[[ -n "$MIN_WIDTH" ]] && echo "  Min width: $MIN_WIDTH"
+[[ -n "$MAX_WIDTH" ]] && echo "  Max width: $MAX_WIDTH"
+[[ -n "$MIN_HEIGHT" ]] && echo "  Min height: $MIN_HEIGHT"
+[[ -n "$MAX_HEIGHT" ]] && echo "  Max height: $MAX_HEIGHT"
+[[ -n "$ASPECT_RATIO" ]] && echo "  Aspect ratio: $ASPECT_RATIO"
 [[ -n "$TAGS" ]] && echo "  Tags: $TAGS"
 [[ -n "$MIN_SCORE" ]] && echo "  Min score: $MIN_SCORE"
 [[ -n "$ARTIST" ]] && echo "  Artist: $ARTIST"
@@ -227,6 +268,20 @@ echo "  Max file size: $MAX_FILE_SIZE"
 
 MAX_FILE_SIZE_BYTES=$(convert_to_bytes "$MAX_FILE_SIZE")
 MIN_FILE_SIZE_BYTES=$(convert_to_bytes "$MIN_FILE_SIZE")
+
+# Convert aspect ratio if specified
+ASPECT_RATIO_FLOAT="0"
+if [[ -n "$ASPECT_RATIO" ]]; then
+    if ! ASPECT_RATIO_FLOAT=$(parse_aspect_ratio "$ASPECT_RATIO"); then
+        exit 1
+    fi
+fi
+
+# Convert width/height to numeric or 0 for jq
+MIN_WIDTH_NUM=${MIN_WIDTH:-0}
+MAX_WIDTH_NUM=${MAX_WIDTH:-0}
+MIN_HEIGHT_NUM=${MIN_HEIGHT:-0}
+MAX_HEIGHT_NUM=${MAX_HEIGHT:-0}
 
 # --- Paths ---
 LOCKFILE="/tmp/hypr_wallpaper_setter.lock"
@@ -287,20 +342,57 @@ download_wallpaper() {
     if [[ "$DRY_RUN" == true ]]; then
         echo "---- Available Posts ----"
         printf "ID\tScore\tAuthor\tWidth\tHeight\tSize\tTags\n"
-        if (( MAX_FILE_SIZE_BYTES == 0 && MIN_FILE_SIZE_BYTES == 0 )); then
+        if (( MAX_FILE_SIZE_BYTES == 0 && MIN_FILE_SIZE_BYTES == 0 )) && [[ -z "$MIN_WIDTH" && -z "$MAX_WIDTH" && -z "$MIN_HEIGHT" && -z "$MAX_HEIGHT" && "$ASPECT_RATIO_FLOAT" == "0" ]]; then
             jq -r 'if type == "array" then . else .posts? // . end | map([.id, (.score // 0), (.author // "unknown"), .width, .height, (.file_size|tostring), (.tags | .[0:50])]) | .[] | @tsv' "$json"
         else
-            jq -r --argjson max "$MAX_FILE_SIZE_BYTES" --argjson min "$MIN_FILE_SIZE_BYTES" 'if type == "array" then . else .posts? // . end | map(select(type == "object" and .file_size != null and (.file_size <= $max or $max == 0) and (.file_size >= $min or $min == 0))) | map([.id, (.score // 0), (.author // "unknown"), .width, .height, (.file_size|tostring), (.tags | .[0:50])]) | .[] | @tsv' "$json"
+            jq -r --argjson max_size "$MAX_FILE_SIZE_BYTES" --argjson min_size "$MIN_FILE_SIZE_BYTES" \
+                --argjson max_width "$MAX_WIDTH_NUM" --argjson min_width "$MIN_WIDTH_NUM" \
+                --argjson max_height "$MAX_HEIGHT_NUM" --argjson min_height "$MIN_HEIGHT_NUM" \
+                --argjson aspect_ratio "$ASPECT_RATIO_FLOAT" \
+'if type == "array" then . else .posts? // . end | 
+ map(select(
+    type == "object" and 
+    .file_size != null and 
+    .width != null and 
+    .height != null and
+    (.file_size <= $max_size or $max_size == 0) and 
+    (.file_size >= $min_size or $min_size == 0) and
+    (.width <= $max_width or $max_width == 0) and
+    (.width >= $min_width or $min_width == 0) and
+    (.height <= $max_height or $max_height == 0) and
+    (.height >= $min_height or $min_height == 0) and
+    ($aspect_ratio == 0 or (.width / .height >= ($aspect_ratio - 0.02) and .width / .height <= ($aspect_ratio + 0.02)))
+ )) | 
+ map([.id, (.score // 0), (.author // "unknown"), .width, .height, (.file_size|tostring), (.tags | .[0:50])]) | 
+ .[] | @tsv' "$json"
         fi
         rm -f "$json"
         return 0
     fi
 
     local IMAGE_URL
-    if (( MAX_FILE_SIZE_BYTES == 0 && MIN_FILE_SIZE_BYTES == 0 )); then
+    if (( MAX_FILE_SIZE_BYTES == 0 && MIN_FILE_SIZE_BYTES == 0 )) && [[ -z "$MIN_WIDTH" && -z "$MAX_WIDTH" && -z "$MIN_HEIGHT" && -z "$MAX_HEIGHT" && "$ASPECT_RATIO_FLOAT" == "0" ]]; then
         IMAGE_URL=$(jq -r 'if type == "array" then . else .posts? // . end | .[].file_url' "$json" | shuf -n 1)
     else
-        IMAGE_URL=$(jq -r --argjson max "$MAX_FILE_SIZE_BYTES" --argjson min "$MIN_FILE_SIZE_BYTES" 'if type == "array" then . else .posts? // . end | map(select(type == "object" and .file_size != null and (.file_size <= $max or $max == 0) and (.file_size >= $min or $min == 0))) | .[].file_url' "$json" | shuf -n 1)
+        IMAGE_URL=$(jq -r --argjson max_size "$MAX_FILE_SIZE_BYTES" --argjson min_size "$MIN_FILE_SIZE_BYTES" \
+            --argjson max_width "$MAX_WIDTH_NUM" --argjson min_width "$MIN_WIDTH_NUM" \
+            --argjson max_height "$MAX_HEIGHT_NUM" --argjson min_height "$MIN_HEIGHT_NUM" \
+            --argjson aspect_ratio "$ASPECT_RATIO_FLOAT" \
+'if type == "array" then . else .posts? // . end | 
+ map(select(
+    type == "object" and 
+    .file_size != null and 
+    .width != null and 
+    .height != null and
+    (.file_size <= $max_size or $max_size == 0) and 
+    (.file_size >= $min_size or $min_size == 0) and
+    (.width <= $max_width or $max_width == 0) and
+    (.width >= $min_width or $min_width == 0) and
+    (.height <= $max_height or $max_height == 0) and
+    (.height >= $min_height or $min_height == 0) and
+    ($aspect_ratio == 0 or (.width / .height >= ($aspect_ratio - 0.02) and .width / .height <= ($aspect_ratio + 0.02)))
+ )) | 
+ .[].file_url' "$json" | shuf -n 1)
     fi
 
     rm -f "$json"
