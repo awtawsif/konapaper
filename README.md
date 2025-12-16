@@ -176,7 +176,7 @@ This will display a table of matching posts with ID, score, author, dimensions, 
 ./konapaper.sh --clean-force
 ```
 
-The preload cache uses separate folders per rating (e.g., preload_s, preload_q), each limited to MAX_PRELOAD_CACHE wallpapers.
+The preload cache uses separate folders per rating (e.g., preload_s, preload_q), each limited to MAX_PRELOAD_CACHE wallpapers. The current wallpaper is always preserved during cache cleanup.
 
 ## Examples
 
@@ -312,7 +312,7 @@ Follow these guidelines for contributions:
 
 2. **"No suitable image found"**: Try different tags, lower the minimum score, or increase the limit.
 
-3. **"Error: failed to reach konachan.net"**: Check internet connection and API availability.
+3. **"Error: failed to reach https://konachan.net"**: Check internet connection and API availability.
 
 4. **Large file downloads**: Adjust `MAX_FILE_SIZE` in config or use `--max-file-size` option.
 
