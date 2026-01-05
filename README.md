@@ -1,6 +1,6 @@
 # Konapaper
 
-A powerful and flexible wallpaper rotator script for Hyprland, designed to fetch high-quality wallpapers from Moebooru-based sites like Konachan.net. It integrates seamlessly with the `swww` wallpaper daemon for smooth transitions and supports advanced filtering, preloading, and caching features.
+A powerful and flexible wallpaper rotator script for both Wayland and X11 display servers, designed to fetch high-quality wallpapers from Moebooru-based sites like Konachan.net. It supports multiple wallpaper tools (swww, swaybg, hyprpaper, feh, nitrogen, etc.) with automatic detection and advanced filtering, preloading, and caching features.
 
 ## Features
 
@@ -11,18 +11,36 @@ A powerful and flexible wallpaper rotator script for Hyprland, designed to fetch
 - **Dry Run Mode**: Preview available wallpapers without downloading
 - **Pool Support**: Download from curated collections of images
 - **Size Limits**: Filter wallpapers by minimum and maximum file size to optimize performance
-- **Hyprland Integration**: Native support for Hyprland's `swww` wallpaper daemon
+- **Cross-Platform Support**: Works with both Wayland (Hyprland, Sway, etc.) and X11 display servers
+- **Multi-Tool Support**: Compatible with swww, swaybg, hyprpaper, feh, nitrogen, fbsetbg, xwallpaper
+- **Auto-Detection**: Automatically detects display server and available wallpaper tools
+- **Custom Commands**: Users can configure custom wallpaper setting commands
 - **Configurable**: Extensive configuration options via config file or command-line arguments
 
 ## Prerequisites
 
-- **Hyprland**: A dynamic tiling Wayland compositor
-- **swww**: A wallpaper daemon for Wayland compositors (install via your package manager)
+### Required Tools
 - **curl**: For API requests and downloads
 - **jq**: For JSON parsing
 - **xmllint**: For XML parsing (part of libxml2-utils)
 - **bash**: Shell environment
 - **flock**: For process locking (usually available)
+
+### Wallpaper Tools (One or more required)
+#### Wayland Support
+- **swww**: A wallpaper daemon for Wayland compositors (recommended)
+- **swaybg**: Wallpaper utility for Sway and other wlroots compositors
+- **hyprpaper**: Hyprland's wallpaper utility
+
+#### X11 Support
+- **feh**: Fast and lightweight image viewer (recommended)
+- **nitrogen**: Background browser and setter
+- **fbsetbg**: Background setting utility for Fluxbox
+- **xwallpaper**: Wallpaper utility for X11
+
+### Display Servers
+- **Wayland**: Hyprland, Sway, Westona, GNOME (Wayland)
+- **X11**: Any X.Org based desktop environment
 
 ## Installation
 
@@ -90,6 +108,28 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 
 - **`DISCOVER_LIMIT`**: Number of items to fetch for discovery modes (default: 20)
 - **`EXPORTED_TAGS_FILE`**: Path to file where discovered tags are exported (default: ~/.config/konapaper/discovered_tags.txt)
+
+#### Custom Wallpaper Commands
+
+- **`WALLPAPER_COMMAND`**: Active wallpaper command (set by init mode or manually)
+- **Tool-specific commands**: `WALLPAPER_COMMAND_SWWW`, `WALLPAPER_COMMAND_SWAYBG`, `WALLPAPER_COMMAND_FEH`, etc.
+- **Placeholder**: Use `{IMAGE}` in commands - it gets replaced with the wallpaper path
+
+**Examples:**
+```bash
+# Custom swww command with different transition
+WALLPAPER_COMMAND="swww img {IMAGE} --transition-type fade --transition-fps 30"
+
+# Custom feh command with different scaling
+WALLPAPER_COMMAND="feh --bg-tile {IMAGE}"
+
+# Multi-monitor setup with hyprpaper
+WALLPAPER_COMMAND="hyprctl hyprpaper preload {IMAGE}; hyprctl hyprpaper wallpaper 'DP-1,{IMAGE}'"
+```
+
+#### Display Server Configuration
+
+- **`DISPLAY_SERVER`**: Auto-detected display server ("wayland" or "x11")
 
 ## Usage
 
@@ -177,6 +217,36 @@ This will display a table of matching posts with ID, score, author, dimensions, 
 ```
 
 The preload cache uses separate folders per rating (e.g., preload_s, preload_q), each limited to MAX_PRELOAD_CACHE wallpapers. The current wallpaper is always preserved during cache cleanup.
+
+### Custom Wallpaper Commands
+
+You can override the default wallpaper tool behavior by setting `WALLPAPER_COMMAND` in your config file:
+
+```bash
+# Example: Custom swww with different transition
+WALLPAPER_COMMAND="swww img {IMAGE} --transition-type fade --transition-fps 30"
+
+# Example: Custom feh with different scaling
+WALLPAPER_COMMAND="feh --bg-center {IMAGE}"
+
+# Example: Multi-monitor setup
+WALLPAPER_COMMAND="hyprctl hyprpaper preload {IMAGE}; hyprctl hyprpaper wallpaper 'all,{IMAGE}'"
+```
+
+The `{IMAGE}` placeholder gets replaced with the actual wallpaper path. If `WALLPAPER_COMMAND` is not set, the script auto-detects and uses the appropriate tool's default command.
+
+### Initialization
+
+```bash
+# Initialize configuration (auto-detects display server and wallpaper tool)
+./konapaper.sh --init
+```
+
+This command:
+- Detects your display server (Wayland/X11)
+- Finds available wallpaper tools
+- Sets up the configuration file with appropriate defaults
+- Configures the active wallpaper command for your detected tool
 
 ## Examples
 
@@ -308,15 +378,19 @@ Follow these guidelines for contributions:
 
 ### Common Issues
 
-1. **"swww-daemon not running"**: Ensure `swww` is installed and the script can start the daemon.
+1. **"No suitable wallpaper tool found"**: Install a supported wallpaper tool for your display server (swww/swaybg/hyprpaper for Wayland, feh/nitrogen/fbsetbg/xwallpaper for X11).
 
-2. **"No suitable image found"**: Try different tags, lower the minimum score, or increase the limit.
+2. **"Error: No command configured for [tool]"**: Set `WALLPAPER_COMMAND` in your config file or run `./konapaper.sh --init` to auto-configure.
 
-3. **"Error: failed to reach https://konachan.net"**: Check internet connection and API availability.
+3. **"No suitable image found"**: Try different tags, lower the minimum score, increase the limit, or adjust file size filters.
 
-4. **Large file downloads**: Adjust `MAX_FILE_SIZE` in config or use `--max-file-size` option.
+4. **"Error: failed to reach https://konachan.net"**: Check internet connection and API availability.
 
-5. **Permission errors**: Ensure the cache directory (`~/.cache/hypr_wallpapers`) is writable.
+5. **Large file downloads**: Adjust `MAX_FILE_SIZE` in config or use `--max-file-size` option.
+
+6. **Permission errors**: Ensure the cache directory (`~/.cache/konapaper`) is writable.
+
+7. **Wrong wallpaper tool being used**: Run `./konapaper.sh --init` to re-detect and configure your wallpaper tool, or manually set `WALLPAPER_COMMAND` in config.
 
 ### Debug Mode
 
@@ -343,7 +417,14 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ## Acknowledgments
 
-- Built for the Hyprland community
+- Built for the Linux desktop community (Wayland and X11)
 - Uses the Moebooru API (Konachan.net)
 - Inspired by various wallpaper rotators and booru downloaders
-- Thanks to the swww developers for the wallpaper daemon</content>
+- Thanks to developers of all supported wallpaper tools:
+  - swww (Wayland wallpaper daemon)
+  - swaybg (Sway wallpaper utility)
+  - hyprpaper (Hyprland wallpaper utility)
+  - feh (X11 image viewer)
+  - nitrogen (X11 wallpaper setter)
+  - fbsetbg (X11 wallpaper utility)
+  - xwallpaper (X11 wallpaper utility)</content>

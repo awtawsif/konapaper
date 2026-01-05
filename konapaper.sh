@@ -55,6 +55,7 @@ load_config() {
     if [[ -f "$EXPORTED_TAGS_FILE" ]]; then
         mapfile -t RANDOM_TAGS_LIST < "$EXPORTED_TAGS_FILE"
     fi
+    WALLPAPER_COMMAND=${WALLPAPER_COMMAND:-""}
 }
 
 process_random_tags() {
@@ -158,6 +159,8 @@ parse_page_argument() {
     return 1
 }
 
+
+
 # --- Parse Args ---
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -224,50 +227,45 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-# --- Init Mode ---
-if $INIT_MODE; then
-    config_src="$(dirname "$0")/konapaper.conf"
-    config_dest="$HOME/.config/konapaper/konapaper.conf"
-    if [[ ! -f "$config_src" ]]; then
-        echo "Error: Source config file not found at $config_src"
-        exit 1
-    fi
-    mkdir -p "$HOME/.config/konapaper"
-    cp "$config_src" "$config_dest"
-    echo "Config file copied to $config_dest"
-    exit 0
-fi
+
 
 # Process random tags if specified
 process_random_tags
 
-echo "Current run arguments:"
-echo "  Limit: $LIMIT"
-echo "  Page: $PAGE"
-echo "  Rating: $RATING"
-echo "  Order: $ORDER"
-echo "  Max file size: $MAX_FILE_SIZE"
-[[ -n "$MIN_FILE_SIZE" ]] && echo "  Min file size: $MIN_FILE_SIZE"
-[[ -n "$MIN_WIDTH" ]] && echo "  Min width: $MIN_WIDTH"
-[[ -n "$MAX_WIDTH" ]] && echo "  Max width: $MAX_WIDTH"
-[[ -n "$MIN_HEIGHT" ]] && echo "  Min height: $MIN_HEIGHT"
-[[ -n "$MAX_HEIGHT" ]] && echo "  Max height: $MAX_HEIGHT"
-[[ -n "$ASPECT_RATIO" ]] && echo "  Aspect ratio: $ASPECT_RATIO"
-[[ -n "$TAGS" ]] && echo "  Tags: $TAGS"
-[[ -n "$MIN_SCORE" ]] && echo "  Min score: $MIN_SCORE"
-[[ -n "$ARTIST" ]] && echo "  Artist: $ARTIST"
-[[ -n "$POOL_ID" ]] && echo "  Pool ID: $POOL_ID"
- $DRY_RUN && echo "  Dry run: enabled"
- $DISCOVER_TAGS && echo "  Tag discovery: enabled"
- $DISCOVER_ARTISTS && echo "  Artist discovery: enabled"
- $LIST_POOLS && echo "  Pool listing: enabled"
-  [[ -n "$SEARCH_POOLS" ]] && echo "  Pool search: $SEARCH_POOLS"
-  [[ "$RANDOM_TAGS_COUNT" -gt 0 ]] && echo "  Random tags count: $RANDOM_TAGS_COUNT"
-  $CLEAN_MODE && echo "  Clean mode: enabled"
-  $FORCE_CLEAN && echo "  Force clean: enabled"
+# Only show run arguments for non-init modes
+if ! $INIT_MODE; then
+    echo "Current run arguments:"
+    echo "  Limit: $LIMIT"
+    echo "  Page: $PAGE"
+    echo "  Rating: $RATING"
+    echo "  Order: $ORDER"
+    echo "  Max file size: $MAX_FILE_SIZE"
+    [[ -n "$MIN_FILE_SIZE" ]] && echo "  Min file size: $MIN_FILE_SIZE"
+    [[ -n "$MIN_WIDTH" ]] && echo "  Min width: $MIN_WIDTH"
+    [[ -n "$MAX_WIDTH" ]] && echo "  Max width: $MAX_WIDTH"
+    [[ -n "$MIN_HEIGHT" ]] && echo "  Min height: $MIN_HEIGHT"
+    [[ -n "$MAX_HEIGHT" ]] && echo "  Max height: $MAX_HEIGHT"
+    [[ -n "$ASPECT_RATIO" ]] && echo "  Aspect ratio: $ASPECT_RATIO"
+    [[ -n "$TAGS" ]] && echo "  Tags: $TAGS"
+    [[ -n "$MIN_SCORE" ]] && echo "  Min score: $MIN_SCORE"
+    [[ -n "$ARTIST" ]] && echo "  Artist: $ARTIST"
+    [[ -n "$POOL_ID" ]] && echo "  Pool ID: $POOL_ID"
+     $DRY_RUN && echo "  Dry run: enabled"
+     $DISCOVER_TAGS && echo "  Tag discovery: enabled"
+     $DISCOVER_ARTISTS && echo "  Artist discovery: enabled"
+     $LIST_POOLS && echo "  Pool listing: enabled"
+      [[ -n "$SEARCH_POOLS" ]] && echo "  Pool search: $SEARCH_POOLS"
+      [[ "$RANDOM_TAGS_COUNT" -gt 0 ]] && echo "  Random tags count: $RANDOM_TAGS_COUNT"
+      $CLEAN_MODE && echo "  Clean mode: enabled"
+      $FORCE_CLEAN && echo "  Force clean: enabled"
+fi
 
 MAX_FILE_SIZE_BYTES=$(convert_to_bytes "$MAX_FILE_SIZE")
-MIN_FILE_SIZE_BYTES=$(convert_to_bytes "$MIN_FILE_SIZE")
+if [[ -n "$MIN_FILE_SIZE" ]]; then
+    MIN_FILE_SIZE_BYTES=$(convert_to_bytes "$MIN_FILE_SIZE")
+else
+    MIN_FILE_SIZE_BYTES=0
+fi
 
 # Convert aspect ratio if specified
 ASPECT_RATIO_FLOAT="0"
@@ -284,8 +282,8 @@ MIN_HEIGHT_NUM=${MIN_HEIGHT:-0}
 MAX_HEIGHT_NUM=${MAX_HEIGHT:-0}
 
 # --- Paths ---
-LOCKFILE="/tmp/hypr_wallpaper_setter.lock"
-CACHE_DIR="$HOME/.cache/hypr_wallpapers"
+LOCKFILE="/tmp/konapaper_setter.lock"
+CACHE_DIR="$HOME/.cache/konapaper"
 mkdir -p "$CACHE_DIR"
 
 PRELOAD_DIR="$CACHE_DIR/preload_$RATING"
@@ -434,12 +432,194 @@ download_wallpaper() {
     return 0
 }
 
+# --- Display Server Detection ---
+detect_display_server() {
+    local display_server="unknown"
+    local wallpaper_tool=""
+    
+    # Method 1: Environment variables (most reliable)
+    if [[ -n "$WAYLAND_DISPLAY" ]]; then
+        display_server="wayland"
+    elif [[ -n "$XDG_SESSION_TYPE" ]]; then
+        case "$XDG_SESSION_TYPE" in
+            wayland) display_server="wayland" ;;
+            x11) display_server="x11" ;;
+        esac
+    elif [[ -n "$DISPLAY" ]]; then
+        display_server="x11"
+    fi
+    
+    # Method 2: Process detection (fallback)
+    if [[ "$display_server" == "unknown" ]]; then
+        if pgrep -x "Xorg" >/dev/null 2>&1 || pgrep -x "Xwayland" >/dev/null 2>&1; then
+            display_server="x11"
+        elif pgrep -x "sway" >/dev/null 2>&1 || pgrep -x "hyprland" >/dev/null 2>&1 || \
+             pgrep -x "weston" >/dev/null 2>&1 || pgrep -x "gnome-shell" >/dev/null 2>&1; then
+            display_server="wayland"
+        fi
+    fi
+    
+    # Method 3: loginctl detection (another fallback)
+    if [[ "$display_server" == "unknown" ]] && command -v loginctl >/dev/null 2>&1; then
+        local session_id
+        session_id=$(loginctl | grep "$(whoami)" | awk '{print $1}' | head -n1)
+        if [[ -n "$session_id" ]]; then
+            local session_type
+            session_type=$(loginctl show-session "$session_id" -p Type 2>/dev/null | cut -d'=' -f2)
+            case "$session_type" in
+                wayland) display_server="wayland" ;;
+                x11) display_server="x11" ;;
+            esac
+        fi
+    fi
+    
+    # Detect available wallpaper tools
+    case "$display_server" in
+        wayland)
+            if command -v swww >/dev/null 2>&1; then
+                wallpaper_tool="swww"
+            elif command -v swaybg >/dev/null 2>&1; then
+                wallpaper_tool="swaybg"
+            elif command -v hyprpaper >/dev/null 2>&1; then
+                wallpaper_tool="hyprpaper"
+            fi
+            ;;
+        x11)
+            if command -v feh >/dev/null 2>&1; then
+                wallpaper_tool="feh"
+            elif command -v nitrogen >/dev/null 2>&1; then
+                wallpaper_tool="nitrogen"
+            elif command -v fbsetbg >/dev/null 2>&1; then
+                wallpaper_tool="fbsetbg"
+            elif command -v xwallpaper >/dev/null 2>&1; then
+                wallpaper_tool="xwallpaper"
+            fi
+            ;;
+    esac
+    
+    echo "$display_server:$wallpaper_tool"
+}
+
 # --- Wallpaper Handling ---
 set_wallpaper() {
     local img="$1"
-    echo "Setting wallpaper: $img"
-    swww img "$img" --transition-type any --transition-fps 60 --transition-duration 1
+    
+    # Use configured wallpaper command if specified
+    if [[ -n "$WALLPAPER_COMMAND" ]]; then
+        echo "Using wallpaper command..."
+        local cmd="${WALLPAPER_COMMAND//\{IMAGE\}/\"$img\"}"
+        echo "Executing: $cmd"
+        eval "$cmd"
+        return $?
+    fi
+    
+    # Auto-detect and use default wallpaper tool command from config
+    local detection
+    detection=$(detect_display_server)
+    local display_server="${detection%:*}"
+    local wallpaper_tool="${detection#*:}"
+    
+    echo "Detected display server: $display_server"
+    echo "Using wallpaper tool: $wallpaper_tool"
+    
+    local tool_var="WALLPAPER_COMMAND_${wallpaper_tool^^}"
+    local tool_cmd="${!tool_var}"
+    
+    if [[ -n "$tool_cmd" ]]; then
+        echo "Using default command for $wallpaper_tool"
+        local cmd="${tool_cmd//\{IMAGE\}/\"$img\"}"
+        echo "Executing: $cmd"
+        eval "$cmd"
+        return $?
+    else
+        echo "Error: No command configured for $wallpaper_tool"
+        echo "Please set WALLPAPER_COMMAND in your config file or install a supported tool."
+        return 1
+    fi
 }
+
+# --- Init Mode ---
+if $INIT_MODE; then
+    config_src="$(dirname "$0")/konapaper.conf"
+    config_dest="$HOME/.config/konapaper/konapaper.conf"
+    if [[ ! -f "$config_src" ]]; then
+        echo "Error: Source config file not found at $config_src"
+        exit 1
+    fi
+    
+    echo "=== Konapaper Initialization ==="
+    echo "Detecting your display environment..."
+    
+    detection=$(detect_display_server)
+    display_server="${detection%:*}"
+    wallpaper_tool="${detection#*:}"
+    
+    echo "Detected display server: $display_server"
+    if [[ -n "$wallpaper_tool" ]]; then
+        echo "Available wallpaper tool: $wallpaper_tool"
+    else
+        echo "No suitable wallpaper tool found"
+        echo "Please install a wallpaper tool for your display server:"
+        if [[ "$display_server" == "wayland" ]]; then
+            echo "  - swww (recommended)"
+            echo "  - swaybg"
+            echo "  - hyprpaper"
+        else
+            echo "  - feh (recommended)"
+            echo "  - nitrogen"
+            echo "  - fbsetbg"
+            echo "  - xwallpaper"
+        fi
+    fi
+    
+    mkdir -p "$HOME/.config/konapaper"
+    cp "$config_src" "$config_dest"
+    
+    # Add display server setting to config
+    if ! grep -q "^DISPLAY_SERVER=" "$config_dest"; then
+        echo "DISPLAY_SERVER=\"$display_server\"" >> "$config_dest"
+    else
+        sed -i "s/^DISPLAY_SERVER=.*/DISPLAY_SERVER=\"$display_server\"/" "$config_dest"
+    fi
+    
+    # Set wallpaper command for detected tool
+    if [[ -n "$wallpaper_tool" ]]; then
+        tool_var="WALLPAPER_COMMAND_${wallpaper_tool^^}"
+        # Get the command from the newly copied config
+        tool_cmd=$(grep "^${tool_var}=" "$config_dest" | cut -d'=' -f2- | tr -d '"')
+        
+        if [[ -n "$tool_cmd" ]]; then
+            # Set the active wallpaper command
+            if ! grep -q "^WALLPAPER_COMMAND=" "$config_dest"; then
+                echo "WALLPAPER_COMMAND=\"$tool_cmd\"" >> "$config_dest"
+            else
+                sed -i "s|^WALLPAPER_COMMAND=.*|WALLPAPER_COMMAND=\"$tool_cmd\"|" "$config_dest"
+            fi
+        fi
+    fi
+    
+    echo ""
+    echo "📋 Configuration Summary:"
+    echo "  Display Server: $display_server"
+    if [[ -n "$wallpaper_tool" ]]; then
+        echo "  Wallpaper Tool: $wallpaper_tool"
+    fi
+    echo ""
+    echo "🔧 Default Settings (from config file):"
+    echo "  Rating: s (Safe)"
+    echo "  Order: random (for variety)"
+    echo "  Limit: 50 posts per query"
+    echo "  Max file size: 2MB"
+    echo "  Preload cache: 10 wallpapers"
+    echo "  Random tags list: landscape, scenic, sky, clouds, water, original, touhou, building"
+    echo ""
+    echo "✅ Configuration complete!"
+    echo "Config file: $config_dest"
+    echo "Cache directory: $HOME/.cache/konapaper"
+    echo ""
+    echo "You can now run konapaper normally. Edit the config file to customize settings."
+    exit 0
+fi
 
 # --- Preload Handling ---
 preload_wallpapers() {
@@ -542,10 +722,6 @@ list_pools() {
 }
 
 # --- Main ---
-if ! pgrep -x "swww-daemon" >/dev/null; then
-    swww-daemon &
-    sleep 0.5
-fi
 
 if [[ "$DRY_RUN" == true ]]; then
     download_wallpaper "/dev/null"
