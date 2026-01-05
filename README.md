@@ -11,6 +11,7 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
 - **Dry Run Mode**: Preview available wallpapers without downloading
 - **Pool Support**: Download from curated collections of images
 - **Size Limits**: Filter wallpapers by minimum and maximum file size to optimize performance
+- **Logging System**: Comprehensive logging with configurable levels and automatic rotation for debugging and monitoring
 - **Cross-Platform Support**: Works with both Wayland (Hyprland, Sway, etc.) and X11 display servers
 - **Multi-Tool Support**: Compatible with swww, swaybg, hyprpaper, feh, nitrogen, fbsetbg, xwallpaper
 - **Auto-Detection**: Automatically detects display server and available wallpaper tools
@@ -108,6 +109,16 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 
 - **`DISCOVER_LIMIT`**: Number of items to fetch for discovery modes (default: 20)
 - **`EXPORTED_TAGS_FILE`**: Path to file where discovered tags are exported (default: ~/.config/konapaper/discovered_tags.txt)
+
+#### Logging Configuration
+
+- **`ENABLE_LOGGING`**: Enable or disable logging functionality (default: "false")
+- **`LOG_FILE`**: Path to the log file where execution details will be stored (default: ~/.config/konapaper/konapaper.log)
+- **`LOG_LEVEL`**: Set the level of detail to log - "basic", "detailed", or "verbose" (default: "detailed")
+  - **basic**: Log only major events and errors
+  - **detailed**: Log major events plus configuration details
+  - **verbose**: Log everything including API calls and file operations
+- **`LOG_ROTATION`**: Enable automatic log rotation when logs exceed 10MB, keeping up to 5 backup files (default: "true")
 
 #### Custom Wallpaper Commands
 
@@ -217,6 +228,38 @@ This will display a table of matching posts with ID, score, author, dimensions, 
 ```
 
 The preload cache uses separate folders per rating (e.g., preload_s, preload_q), each limited to MAX_PRELOAD_CACHE wallpapers. The current wallpaper is always preserved during cache cleanup.
+
+### Logging
+
+Konapaper includes a comprehensive logging system for debugging and monitoring:
+
+```bash
+# Enable logging in config file
+echo 'ENABLE_LOGGING="true"' >> ~/.config/konapaper/konapaper.conf
+
+# Set different log levels
+echo 'LOG_LEVEL="verbose"' >> ~/.config/konapaper/konapaper.conf  # All details
+echo 'LOG_LEVEL="basic"' >> ~/.config/konapaper/konapaper.conf    # Only major events
+
+# Custom log file location
+echo 'LOG_FILE="/var/log/konapaper.log"' >> ~/.config/konapaper/konapaper.conf
+
+# Disable log rotation (not recommended for long-term use)
+echo 'LOG_ROTATION="false"' >> ~/.config/konapaper/konapaper.conf
+```
+
+**Log File Contents:**
+- Session timestamps and execution details
+- Command-line arguments used
+- API calls and responses
+- File operations and downloads
+- Wallpaper setting commands and results
+- Errors and warnings with context
+
+**Log Rotation:**
+- Automatically rotates logs when they exceed 10MB
+- Keeps up to 5 backup files (konapaper.log.1, .2, etc.)
+- Prevents disk space issues from long-running scripts
 
 ### Custom Wallpaper Commands
 
@@ -356,6 +399,9 @@ bash -n konapaper.sh
 
 # Test with size filters
 ./konapaper.sh --dry-run --min-file-size "500KB" --max-file-size "2MB" --tags "landscape" --limit 5
+
+# Test logging functionality
+ENABLE_LOGGING="true" LOG_LEVEL="detailed" ./konapaper.sh --dry-run --tags "test" --limit 1
 ```
 
 ### Code Style
@@ -392,13 +438,21 @@ Follow these guidelines for contributions:
 
 7. **Wrong wallpaper tool being used**: Run `./konapaper.sh --init` to re-detect and configure your wallpaper tool, or manually set `WALLPAPER_COMMAND` in config.
 
+8. **Intermittent issues**: Enable logging to track execution details and identify patterns: `ENABLE_LOGGING="true"` in config.
+
 ### Debug Mode
 
-For debugging, run with verbose output or check the API responses manually:
+For debugging, run with verbose output, enable logging, or check the API responses manually:
 
 ```bash
 # Check API response
 curl "https://konachan.net/post.json?limit=1&tags=rating:s"
+
+# Enable verbose logging temporarily
+ENABLE_LOGGING="true" LOG_LEVEL="verbose" ./konapaper.sh --dry-run --tags "test" --limit 1
+
+# Check recent log entries
+tail -f ~/.config/konapaper/konapaper.log
 ```
 
 ## Contributing
