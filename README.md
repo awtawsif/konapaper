@@ -46,7 +46,7 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
 
 1. Clone or download the repository:
    ```bash
-   git clone https://github.com/yourusername/konapaper.git
+   git clone https://github.com/awtawsif/konapaper.git
    cd konapaper
    ```
 
