@@ -676,8 +676,8 @@ detect_display_server() {
     # Detect available wallpaper tools
     case "$display_server" in
         wayland)
-            if command -v swww >/dev/null 2>&1; then
-                wallpaper_tool="swww"
+            if command -v awww >/dev/null 2>&1; then
+                wallpaper_tool="awww"
             elif command -v swaybg >/dev/null 2>&1; then
                 wallpaper_tool="swaybg"
             elif command -v hyprpaper >/dev/null 2>&1; then
@@ -772,7 +772,7 @@ if $INIT_MODE; then
         echo "No suitable wallpaper tool found"
         echo "Please install a wallpaper tool for your display server:"
         if [[ "$display_server" == "wayland" ]]; then
-            echo "  - swww (recommended)"
+            echo "  - awww (recommended)"
             echo "  - swaybg"
             echo "  - hyprpaper"
         else

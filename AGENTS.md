@@ -97,7 +97,7 @@ Konapaper is a bash-based wallpaper rotator for both Wayland and X11 display ser
 - **Background Jobs:** Use `&` for background processes like preloading
 - **Process Synchronization:** Use `wait` to synchronize background jobs
 - **Process Locking:** Use `flock` to prevent concurrent execution of the same script
-- **Daemon Management:** Check and start required daemons (swww-daemon) if not running
+- **Daemon Management:** Check and start required daemons (awww-daemon) if not running
 - **Signal Handling:** Trap signals for cleanup if needed (though not currently implemented)
 
 ### Performance Considerations
@@ -109,7 +109,7 @@ Konapaper is a bash-based wallpaper rotator for both Wayland and X11 display ser
 
 ### Dependencies and External Tools
 - **Required Tools:** `curl`, `jq`, `xmllint`, `flock`, `shuf`, `awk`, `stat`, `find`
-- **Wallpaper Tools (Wayland):** `swww` (recommended), `swaybg`, `hyprpaper`
+- **Wallpaper Tools (Wayland):** `awww` (recommended), `swaybg`, `hyprpaper`
 - **Wallpaper Tools (X11):** `feh` (recommended), `nitrogen`, `fbsetbg`, `xwallpaper`
 - **System Tools:** `pgrep`, `loginctl`, `bash`, `mktemp`
 - **Error Checking:** Verify tool availability before use, provide helpful installation guidance

@@ -1,6 +1,6 @@
 # Konapaper
 
-A powerful and flexible wallpaper rotator script for both Wayland and X11 display servers, designed to fetch high-quality wallpapers from Moebooru-based sites like Konachan.net. It supports multiple wallpaper tools (swww, swaybg, hyprpaper, feh, nitrogen, etc.) with automatic detection and advanced filtering, preloading, and caching features.
+A powerful and flexible wallpaper rotator script for both Wayland and X11 display servers, designed to fetch high-quality wallpapers from Moebooru-based sites like Konachan.net. It supports multiple wallpaper tools (awww, swaybg, hyprpaper, feh, nitrogen, etc.) with automatic detection and advanced filtering, preloading, and caching features.
 
 ## Features
 
@@ -13,7 +13,7 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
 - **Size Limits**: Filter wallpapers by minimum and maximum file size to optimize performance
 - **Logging System**: Comprehensive logging with configurable levels and automatic rotation for debugging and monitoring
 - **Cross-Platform Support**: Works with both Wayland (Hyprland, Sway, etc.) and X11 display servers
-- **Multi-Tool Support**: Compatible with swww, swaybg, hyprpaper, feh, nitrogen, fbsetbg, xwallpaper
+- **Multi-Tool Support**: Compatible with awww, swaybg, hyprpaper, feh, nitrogen, fbsetbg, xwallpaper
 - **Auto-Detection**: Automatically detects display server and available wallpaper tools
 - **Custom Commands**: Users can configure custom wallpaper setting commands
 - **Configurable**: Extensive configuration options via config file or command-line arguments
@@ -29,7 +29,7 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
 
 ### Wallpaper Tools (One or more required)
 #### Wayland Support
-- **swww**: A wallpaper daemon for Wayland compositors (recommended)
+- **awww**: A wallpaper daemon for Wayland compositors (recommended)
 - **swaybg**: Wallpaper utility for Sway and other wlroots compositors
 - **hyprpaper**: Hyprland's wallpaper utility
 
@@ -62,7 +62,7 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
    ```
    This copies the default config file to `~/.config/konapaper/konapaper.conf`.
 
-4. Ensure `swww` daemon is running (the script will start it automatically if needed)
+4. Ensure `awww` daemon is running (the script will start it automatically if needed)
 
 ## Configuration
 
@@ -123,13 +123,13 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 #### Custom Wallpaper Commands
 
 - **`WALLPAPER_COMMAND`**: Active wallpaper command (set by init mode or manually)
-- **Tool-specific commands**: `WALLPAPER_COMMAND_SWWW`, `WALLPAPER_COMMAND_SWAYBG`, `WALLPAPER_COMMAND_FEH`, etc.
+- **Tool-specific commands**: `WALLPAPER_COMMAND_AWWW`, `WALLPAPER_COMMAND_SWAYBG`, `WALLPAPER_COMMAND_FEH`, etc.
 - **Placeholder**: Use `{IMAGE}` in commands - it gets replaced with the wallpaper path
 
 **Examples:**
 ```bash
-# Custom swww command with different transition
-WALLPAPER_COMMAND="swww img {IMAGE} --transition-type fade --transition-fps 30"
+# Custom awww command with different transition
+WALLPAPER_COMMAND="awww img {IMAGE} --transition-type fade --transition-fps 30"
 
 # Custom feh command with different scaling
 WALLPAPER_COMMAND="feh --bg-tile {IMAGE}"
@@ -266,8 +266,8 @@ echo 'LOG_ROTATION="false"' >> ~/.config/konapaper/konapaper.conf
 You can override the default wallpaper tool behavior by setting `WALLPAPER_COMMAND` in your config file:
 
 ```bash
-# Example: Custom swww with different transition
-WALLPAPER_COMMAND="swww img {IMAGE} --transition-type fade --transition-fps 30"
+# Example: Custom awww with different transition
+WALLPAPER_COMMAND="awww img {IMAGE} --transition-type fade --transition-fps 30"
 
 # Example: Custom feh with different scaling
 WALLPAPER_COMMAND="feh --bg-center {IMAGE}"
@@ -424,7 +424,7 @@ Follow these guidelines for contributions:
 
 ### Common Issues
 
-1. **"No suitable wallpaper tool found"**: Install a supported wallpaper tool for your display server (swww/swaybg/hyprpaper for Wayland, feh/nitrogen/fbsetbg/xwallpaper for X11).
+1. **"No suitable wallpaper tool found"**: Install a supported wallpaper tool for your display server (awww/swaybg/hyprpaper for Wayland, feh/nitrogen/fbsetbg/xwallpaper for X11).
 
 2. **"Error: No command configured for [tool]"**: Set `WALLPAPER_COMMAND` in your config file or run `./konapaper.sh --init` to auto-configure.
 
@@ -475,7 +475,7 @@ This project is licensed under the MIT License. See the LICENSE file for details
 - Uses the Moebooru API (Konachan.net)
 - Inspired by various wallpaper rotators and booru downloaders
 - Thanks to developers of all supported wallpaper tools:
-  - swww (Wayland wallpaper daemon)
+  - awww (Wayland wallpaper daemon)
   - swaybg (Sway wallpaper utility)
   - hyprpaper (Hyprland wallpaper utility)
   - feh (X11 image viewer)
