@@ -35,6 +35,10 @@ LIST_POOLS=false
 SEARCH_POOLS=""
 EXPORT_TAGS=false
 
+FAV_MODE=false
+LIST_FAVS=false
+FROM_FAVS=false
+
 # --- Logging Variables ---
 ENABLE_LOGGING=false
 LOG_FILE="$HOME/.config/konapaper/konapaper.log"
@@ -369,11 +373,14 @@ while [[ "$#" -gt 0 ]]; do
         -L|--list-pools) LIST_POOLS=true ;;
         -S|--search-pools) SEARCH_POOLS="$2"; LIST_POOLS=true; shift ;;
          -R|--random-tags) RANDOM_TAGS_COUNT="$2"; shift ;;
-         -E|--export-tags) EXPORT_TAGS=true ;;
+-E|--export-tags) EXPORT_TAGS=true ;;
           -cc|--clean-cache) CLEAN_MODE=true ;;
           -cf|--clean-force) CLEAN_MODE=true; FORCE_CLEAN=true ;;
           -I|--init) INIT_MODE=true ;;
-         -h|--help)
+          --fav) FAV_MODE=true ;;
+          --list-favs) LIST_FAVS=true ;;
+          --from-favs) FROM_FAVS=true ;;
+          -h|--help)
             echo "Usage: $0 [options]"
             echo "  -t, --tags           Tags (e.g. 'scenic sky')"
             echo "  -r, --rating         s/q/e (default: s)"
@@ -398,9 +405,12 @@ while [[ "$#" -gt 0 ]]; do
                 echo "  -A, --discover-artists Discover artists"
                 echo "  -L, --list-pools     List available pools"
                 echo "  -S, --search-pools   Search pools by name"
-                echo "  -R, --random-tags    Number of random tags to select from config list"
-                echo "  -E, --export-tags    Export discovered tags to file (use with --discover-tags)"
-             exit 0 ;;
+                 echo "  -R, --random-tags    Number of random tags to select from config list"
+                 echo "  -E, --export-tags    Export discovered tags to file (use with --discover-tags)"
+                 echo "  --fav                Save current wallpaper to favorites"
+                 echo "  --list-favs          List saved favorites"
+                 echo "  --from-favs          Set random wallpaper from favorites"
+              exit 0 ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
@@ -602,13 +612,17 @@ download_wallpaper() {
     echo "-> Downloading: $IMAGE_URL"
     log_write "INFO" "Downloading image: $IMAGE_URL"
     log_file_operation "download" "$outfile" "from $IMAGE_URL"
-    if ! curl -sfL "$IMAGE_URL" -o "$outfile"; then
+    
+    local tmpfile="${outfile}.tmp"
+    if ! curl -sfL "$IMAGE_URL" -o "$tmpfile"; then
         echo "Error: download failed."
         log_error "Download failed: $IMAGE_URL"
-        log_file_operation "delete" "$outfile"
-        rm -f "$outfile"
+        log_file_operation "delete" "$tmpfile"
+        rm -f "$tmpfile"
         return 1
     fi
+    
+    mv "$tmpfile" "$outfile"
 
     local size
     size=$(stat -c%s "$outfile")
@@ -932,7 +946,118 @@ list_pools() {
     rm -f "$xml"
 }
 
+save_to_favorites() {
+    local source="$CURRENT_WALLPAPER"
+    
+    if [[ ! -f "$source" ]]; then
+        echo "Error: No current wallpaper found at $source"
+        echo "Download a wallpaper first before saving to favorites."
+        return 1
+    fi
+    
+    local fav_dir="${FAVORITES_DIR:-$HOME/Pictures/Wallpapers}"
+    mkdir -p "$fav_dir"
+    
+    local filename
+    filename="wallpaper_$(date '+%Y-%m-%d_%H%M%S').jpg"
+    local dest="$fav_dir/$filename"
+    
+    if cp "$source" "$dest"; then
+        echo "Saved to favorites: $dest"
+        log_success "Wallpaper saved to favorites: $dest"
+    else
+        echo "Error: Failed to copy wallpaper to favorites"
+        log_error "Failed to copy wallpaper to favorites: $source -> $dest"
+        return 1
+    fi
+    
+    return 0
+}
+
+list_favorites() {
+    local fav_dir="${FAVORITES_DIR:-$HOME/Pictures/Wallpapers}"
+    
+    if [[ ! -d "$fav_dir" ]]; then
+        echo "No favorites directory found at $fav_dir"
+        echo "Run with --fav to save your first favorite!"
+        return 0
+    fi
+    
+    local count
+    count=$(find "$fav_dir" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" \) | wc -l)
+    
+    if (( count == 0 )); then
+        echo "No favorites found in $fav_dir"
+        echo "Run with --fav to save your first favorite!"
+        return 0
+    fi
+    
+    echo "Favorites in $fav_dir:"
+    echo ""
+    
+    local total_size=0
+    while IFS= read -r -d '' file; do
+        local size
+        size=$(stat -c%s "$file")
+        total_size=$((total_size + size))
+        local size_human
+        size_human=$(human_readable_size "$size")
+        local name
+        name=$(basename "$file")
+        echo "  $name  ($size_human)"
+    done < <(find "$fav_dir" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" \) -print0)
+    
+    echo ""
+    echo "Total: $count favorite(s) ($(human_readable_size "$total_size"))"
+    
+    return 0
+}
+
+set_from_favorites() {
+    local fav_dir="${FAVORITES_DIR:-$HOME/Pictures/Wallpapers}"
+    
+    if [[ ! -d "$fav_dir" ]]; then
+        echo "No favorites directory found at $fav_dir"
+        echo "Run with --fav to save your first favorite!"
+        return 1
+    fi
+    
+    local wallpapers
+    wallpapers=$(find "$fav_dir" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" \))
+    
+    if [[ -z "$wallpapers" ]]; then
+        echo "No favorites found in $fav_dir"
+        echo "Run with --fav to save your first favorite!"
+        return 1
+    fi
+    
+    local selected
+    selected=$(echo "$wallpapers" | shuf -n 1)
+    
+    echo "Selected: $(basename "$selected")"
+    set_wallpaper "$selected"
+}
+
 # --- Main ---
+
+# --- Favorites Modes ---
+if $FAV_MODE; then
+    save_to_favorites
+    flock -u 9
+    exit 0
+fi
+
+if $LIST_FAVS; then
+    list_favorites
+    flock -u 9
+    exit 0
+fi
+
+if $FROM_FAVS; then
+    set_from_favorites
+    flock -u 9
+    exit 0
+fi
 
 if [[ "$DRY_RUN" == true ]]; then
     download_wallpaper "/dev/null"

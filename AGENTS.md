@@ -1,192 +1,160 @@
 # Agent Guidelines for konapaper
 
 ## Project Overview
-Konapaper is a bash-based wallpaper rotator for both Wayland and X11 display servers, designed to fetch high-quality wallpapers from Moebooru-based sites like Konachan.net. It features cross-platform support, advanced filtering, intelligent caching, and automatic wallpaper tool detection with customizable commands.
+Konapaper is a bash-based wallpaper rotator for Wayland and X11, fetching wallpapers from Moebooru-based sites like Konachan.net. Features include advanced filtering, intelligent caching, favorites management, and cross-platform wallpaper tool support.
 
 ## Build/Lint/Test Commands
 
 ### Essential Commands
-- **Lint:** `shellcheck konapaper.sh`
-- **Syntax:** `bash -n konapaper.sh`
+```bash
+shellcheck konapaper.sh    # Lint
+bash -n konapaper.sh       # Syntax check
+```
 
 ### Testing Commands
-- **Single Test (Quick):** `./konapaper.sh --dry-run --tags "test" --limit 1`
-- **Single Test (Realistic):** `./konapaper.sh --dry-run --tags "landscape" --limit 3`
-- **Full Feature Test:** `./konapaper.sh --dry-run --tags "landscape" --rating "s" --limit 5`
-- **Size Filtering Test:** `./konapaper.sh --dry-run --min-file-size "500KB" --max-file-size "2MB" --tags "landscape" --limit 5`
-- **Resolution Test:** `./konapaper.sh --dry-run --aspect-ratio "16:9" --min-width "1920" --min-height "1080" --limit 3`
-- **Discovery Test:** `./konapaper.sh --discover-tags --limit 10`
-- **Pool Test:** `./konapaper.sh --list-pools --limit 5`
+```bash
+# Quick tests
+./konapaper.sh --dry-run --tags "landscape" --limit 3
 
-### Configuration Test
-- **Init Mode Test:** `./konapaper.sh --init` (interactive)
-- **Non-interactive Init:** `echo "3" | ./konapaper.sh --init`
+# Feature tests
+./konapaper.sh --discover-tags --limit 10
+./konapaper.sh --list-pools --limit 5
+./konapaper.sh --discover-artists --limit 10
 
-### Wallpaper Tool Tests
-- **Auto-detection Test:** Check that appropriate tool command is selected
-- **Custom Command Test:** Set `WALLPAPER_COMMAND="echo 'Test: {IMAGE}'"` in config
-- **Cross-platform Test:** Test on both Wayland and X11 environments
+# Filter tests
+./konapaper.sh --dry-run --aspect-ratio "16:9" --min-width 1920 --min-height 1080 --limit 3
+./konapaper.sh --dry-run --min-file-size "500KB" --max-file-size "2MB" --tags "landscape" --limit 5
+
+# Favorites tests
+./konapaper.sh --fav                          # Save current to favorites
+./konapaper.sh --list-favs                    # List favorites
+./konapaper.sh --from-favs                    # Set from favorites
+
+# Help validation
+./konapaper.sh --help | grep -E "^\s+--"       # Verify all flags documented
+```
+
+### Config/Lock Tests
+```bash
+./konapaper.sh --init                          # Interactive init
+echo "" | ./konapaper.sh --init                # Non-interactive init
+./konapaper.sh --clean-cache                   # Cache cleanup (requires confirmation)
+./konapaper.sh --clean-force                   # Force cleanup
+```
 
 ## Code Style Guidelines
 
 ### Shell Scripting Standards
-- **Shebang:** `#!/bin/bash` (always at line 1)
-- **Indentation:** 4 spaces, no tabs (strict enforcement)
-- **Line Length:** Maximum 120 characters for readability
+- **Shebang:** `#!/bin/bash` (line 1)
+- **Indentation:** 4 spaces, no tabs
+- **Line Length:** Max 120 characters
 - **File Encoding:** UTF-8, Unix line endings
 
 ### Variables and Constants
-- **Global Variables:** `UPPERCASE_WITH_UNDERSCORES` (e.g., `BASE_URL`, `MAX_FILE_SIZE`)
-- **Local Variables:** `lowercase_with_underscores` (declare with `local` keyword)
-- **Constants:** Use `readonly` for immutable values
-- **Arrays:** Indexed arrays with `declare -a`, access with `${array[index]}`
-- **Variable Expansion:** Always quote variables: `"$variable"` not `$variable`
-- **Parameter Expansion:** Use `${VAR:-default}` for defaults, `${variable#pattern}` for string manipulation
+- **Global:** `UPPERCASE_WITH_UNDERSCORES` (e.g., `BASE_URL`, `MAX_FILE_SIZE`)
+- **Local:** `lowercase_with_underscores` (use `local` keyword)
+- **Constants:** Use `readonly`
+- **Expansion:** Always quote: `"$variable"`, use `${VAR:-default}` for defaults
 
 ### Functions
-- **Naming:** `snake_case` (e.g., `download_wallpaper`, `parse_aspect_ratio`)
-- **Declaration:** Declare functions before use, group related functions
-- **Headers:** Add descriptive comments for complex functions
-- **Return Values:** Use `return 0` for success, `return 1` for failure
-- **Parameters:** Use `$1`, `$2`, etc., validate inputs before use
-- **Single Responsibility:** Each function should do one thing well
+- **Naming:** `snake_case` (e.g., `download_wallpaper`)
+- **Declaration:** Declare before use, group related functions
+- **Return Values:** `return 0` success, `return 1` failure
+- **Single Responsibility:** Each function does one thing well
 
 ### Control Structures
-- **Conditionals:** Use `[[ ]]` for tests, avoid `[ ]` (legacy)
-- **Loops:** Prefer `for` loops over `while` when possible
-- **Case Statements:** Use for parsing command-line arguments and mode selection
-- **Error Handling:** Check exit codes with `if ! command; then` and handle failures gracefully
+- **Conditionals:** Use `[[ ]]`, avoid `[ ]`
+- **Case Statements:** For CLI argument parsing and mode selection
+- **Error Handling:** Check exit codes with `if ! command; then`
 
 ### String and Array Handling
-- **String Literals:** `'single quotes'` for constants, `"double quotes"` for variables
-- **String Operations:** Use bash parameter expansion (`${variable#pattern}`, `${variable%pattern}`)
-- **Arrays:** Use `mapfile` for reading files into arrays
-- **Path Handling:** Use `dirname` and `basename` for path manipulation
+- **Strings:** `'single quotes'` for constants, `"double quotes"` for variables
+- **Arrays:** Use `mapfile` for reading files, indexed arrays with `${array[index]}`
+- **Path Handling:** Use `dirname` and `basename`
 
 ### Error Handling and Security
 - **Exit Codes:** Always check command exit codes, return meaningful values
-- **Error Messages:** Redirect to stderr (`>&2`) with descriptive messages
-- **Input Validation:** Validate all user inputs and parameters before processing
-- **Temp Files:** Use `mktemp` for temporary files, clean up properly with trap if needed
-- **Security:** Quote all variables, avoid eval with user input, use safe parsing
-- **Resource Cleanup:** Always clean up temporary files and background processes
+- **Error Messages:** Redirect to stderr (`>&2`)
+- **Input Validation:** Validate all user inputs before processing
+- **Temp Files:** Use `mktemp`, clean up with trap if needed
+- **Security:** Quote all variables, avoid `eval` with user input
 
 ### File Operations
-- **File Descriptors:** Use exec redirection for locks (`exec 9>"$LOCKFILE"`)
-- **File Testing:** Use `-f`, `-d`, `-r` tests before file operations
-- **Permissions:** Ensure proper file permissions for cache/config directories
-- **Atomic Operations:** Use temp files and mv for atomic writes when needed
-- **Directory Creation:** Use `mkdir -p` for recursive directory creation
-
-### Configuration Management
-- **Config Loading:** Source with `source "$file"` after shellcheck disable comment
-- **Priority Order:** User config > script directory > current directory
-- **Default Values:** Use parameter expansion (`${VAR:-default}`) for fallbacks
-- **Environment Variables:** Support environment variable overrides where appropriate
-- **Template System:** Use placeholder replacement for configurable commands (e.g., `{IMAGE}`)
-
-### API Integration
-- **URL Building:** Encode parameters properly, use HTTPS only
-- **JSON Parsing:** Use `jq` for JSON processing, validate responses before use
-- **XML Parsing:** Use `xmllint` for XML, handle namespaces properly
-- **HTTP Requests:** Use `curl` with proper error handling (`-sf` flags)
-- **Rate Limiting:** Implement appropriate delays between API calls
-- **Response Validation:** Check API response structure before processing
-
-### Process Management
-- **Background Jobs:** Use `&` for background processes like preloading
-- **Process Synchronization:** Use `wait` to synchronize background jobs
-- **Process Locking:** Use `flock` to prevent concurrent execution of the same script
-- **Daemon Management:** Check and start required daemons (awww-daemon) if not running
-- **Signal Handling:** Trap signals for cleanup if needed (though not currently implemented)
-
-### Performance Considerations
-- **Caching Strategy:** Implement intelligent caching for API responses and images
-- **Preloading:** Use background processes for preloading wallpapers
-- **Memory Management:** Clean up temporary files and unset variables when done
-- **Network Efficiency:** Minimize API calls, use appropriate limits and filters
-- **Atomic Operations:** Minimize system calls, batch operations where possible
-
-### Dependencies and External Tools
-- **Required Tools:** `curl`, `jq`, `xmllint`, `flock`, `shuf`, `awk`, `stat`, `find`
-- **Wallpaper Tools (Wayland):** `awww` (recommended), `swaybg`, `hyprpaper`
-- **Wallpaper Tools (X11):** `feh` (recommended), `nitrogen`, `fbsetbg`, `xwallpaper`
-- **System Tools:** `pgrep`, `loginctl`, `bash`, `mktemp`
-- **Error Checking:** Verify tool availability before use, provide helpful installation guidance
-
-### Comments and Documentation
-- **Function Headers:** Describe purpose, parameters, and return values for complex functions
-- **Section Comments:** Use `# --- Section Name ---` for major code blocks
-- **Inline Comments:** Explain complex logic, business rules, and non-obvious operations
-- **TODO Comments:** Mark future improvements with `# TODO:` for easy tracking
-- **Configuration Comments:** Explain what each configuration option does and acceptable values
-
-### Code Organization
-- **Structure:** Group related functionality (helpers, parsers, main logic, API functions)
-- **Constants:** Define all constants and global variables at the beginning of the script
-- **Imports:** Source external files at the top with proper error handling
-- **Main Logic:** Keep main execution flow clean and readable
-- **Modularity:** Write reusable functions with clear interfaces
-
-### Testing and Validation
-- **Dry Run Mode:** Implement `--dry-run` for testing without side effects
-- **Parameter Validation:** Validate all command-line arguments with meaningful error messages
-- **API Testing:** Test API endpoints and handle failures gracefully
-- **Cache Testing:** Verify cache directory creation and permissions
-- **Cross-Platform Testing:** Test on both Wayland and X11 environments
-- **Edge Cases:** Handle empty responses, network failures, permission errors
+- **File Descriptors:** Use `exec 9>"$LOCKFILE"` for locks
+- **File Testing:** Use `-f`, `-d`, `-r` tests before operations
+- **Atomic Operations:** Download to `.tmp`, rename after completion
+  ```bash
+  curl -sfL "$URL" -o "${outfile}.tmp" && mv "${outfile}.tmp" "$outfile"
+  ```
+- **Directory Creation:** Use `mkdir -p`
 
 ## Architecture Patterns
 
-### Modular Design
-- **Configuration Layer:** Priority-based loading with environment support
-- **Helper Functions:** Reusable utilities for common operations
-- **API Layer:** Centralized API interaction with error handling
-- **Service Layer:** Wallpaper tool detection and command execution
-- **Cache Layer:** Intelligent caching with size management
+### Code Organization (top to bottom)
+1. Shebang and header comment
+2. Global variables and constants
+3. Config file loading
+4. Helper functions (converters, parsers)
+5. Logging functions
+6. CLI argument parsing
+7. Mode-specific functions (discovery, favorites, etc.)
+8. Main execution logic
 
-### Error Recovery
-- **Graceful Degradation:** Fallback mechanisms for tool detection
-- **User Guidance:** Provide clear error messages and installation instructions
-- **Resource Management:** Always clean up resources, even on failure
-- **Lock Management:** Prevent concurrent execution conflicts
+### Configuration Priority
+1. User config: `~/.config/konapaper/konapaper.conf`
+2. Script directory: `$(dirname "$0")/konapaper.conf`
+3. Current directory: `./konapaper.conf`
 
-### Cross-Platform Support
-- **Display Server Detection:** Multiple methods for reliable detection
-- **Tool Agnostic:** Template-based command system for any wallpaper tool
-- **Auto-Configuration:** Initialize with appropriate settings automatically
+### API Integration
+- **URL Building:** Encode parameters, use HTTPS only
+- **JSON Parsing:** Use `jq`, validate responses
+- **HTTP Requests:** `curl -sf` with proper error handling
+- **Response Validation:** Check structure before processing
+
+### Process Management
+- **Locking:** Use `flock` to prevent concurrent execution
+- **Background Jobs:** Use `&` and `wait` for preloading
+- **Daemon Check:** Verify awww daemon is running if needed
+
+## Dependencies
+
+### Required Tools
+`curl`, `jq`, `xmllint`, `flock`, `shuf`, `awk`, `stat`, `find`
+
+### Wallpaper Tools
+- **Wayland:** `awww` (recommended), `swaybg`, `hyprpaper`
+- **X11:** `feh` (recommended), `nitrogen`, `fbsetbg`, `xwallpaper`
 
 ## Development Workflow
 
 ### Before Making Changes
-1. **Run Tests:** Execute all test commands to ensure current state is working
-2. **Read AGENTS.md:** Review these guidelines before coding
-3. **Plan Changes:** Consider impact on all supported platforms and tools
-
-### Making Changes
-1. **Follow Style:** Adhere to all style guidelines in this document
-2. **Test Incrementally:** Test each change with the test commands
-3. **Update Documentation:** Update README.md and help text if needed
+1. Run `shellcheck` and `bash -n` to verify clean state
+2. Test current functionality before modifications
+3. Plan changes considering all supported platforms
 
 ### After Making Changes
-1. **Run Full Test Suite:** Execute all test commands
-2. **Lint and Syntax Check:** Run shellcheck and bash -n
-3. **Test Cross-Platform:** Verify on both Wayland and X11 if possible
-4. **Update Configuration:** Update config file template if adding new options
+1. Run linting: `shellcheck konapaper.sh && bash -n konapaper.sh`
+2. Test with `--dry-run` to verify behavior
+3. Update `--help` text if adding new flags
+4. Update `README.md` and `konapaper.conf` if adding config options
 
 ## Special Considerations
 
-### Security
-- **No Eval with User Input:** Never use eval with unchecked user input
-- **Path Sanitization:** Validate all file paths before use
-- **Network Security:** Use HTTPS only, validate SSL certificates
+### Race Condition Prevention
+Downloads use atomic rename pattern to prevent incomplete wallpapers:
+```bash
+tmpfile="${outfile}.tmp"
+curl -sfL "$IMAGE_URL" -o "$tmpfile" && mv "$tmpfile" "$outfile"
+```
+Only `.jpg` files are selected; `.tmp` files are automatically skipped.
 
-### Performance
-- **Background Processing:** Use for long-running operations like downloads
-- **Caching Strategy:** Balance between speed and disk usage
-- **API Efficiency:** Filter client-side rather than downloading large responses
+### Favorites System
+- Directory: `FAVORITES_DIR` (default: `~/Pictures/Wallpapers`)
+- Filename format: `wallpaper_YYYY-MM-DD_HHMMSS.jpg`
+- No metadata storage—simple file-based management
 
-### User Experience
-- **Helpful Errors:** Provide actionable error messages with suggested solutions
-- **Auto-Detection:** Make initialization as seamless as possible
-- **Clear Documentation:** Explain all options with practical examples
+### CLI Flag Conventions
+- Short flags: single letter options (e.g., `-t`, `-l`)
+- Long flags: `--verbose-name` format
+- Boolean flags: `FLAG_NAME=true` in code, no value on CLI
+- Value flags: `--flag value` pattern, shift in case statement

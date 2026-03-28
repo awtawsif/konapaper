@@ -17,6 +17,7 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
 - **Auto-Detection**: Automatically detects display server and available wallpaper tools
 - **Custom Commands**: Users can configure custom wallpaper setting commands
 - **Configurable**: Extensive configuration options via config file or command-line arguments
+- **Favorites System**: Save wallpapers you love to a dedicated folder and rotate from your favorites collection
 
 ## Prerequisites
 
@@ -138,6 +139,10 @@ WALLPAPER_COMMAND="feh --bg-tile {IMAGE}"
 WALLPAPER_COMMAND="hyprctl hyprpaper preload {IMAGE}; hyprctl hyprpaper wallpaper 'DP-1,{IMAGE}'"
 ```
 
+#### Favorites Configuration
+
+- **`FAVORITES_DIR`**: Directory to save favorite wallpapers (default: `$HOME/Pictures/Wallpapers`)
+
 #### Display Server Configuration
 
 - **`DISPLAY_SERVER`**: Auto-detected display server ("wayland" or "x11")
@@ -188,6 +193,9 @@ WALLPAPER_COMMAND="hyprctl hyprpaper preload {IMAGE}; hyprctl hyprpaper wallpape
 | `--export-tags` | `-E` | Export discovered tags to file (use with --discover-tags) | false |
 | `--clean-cache` | `-cc` | Clean preload cache | false |
 | `--clean-force` | `-cf` | Clean without confirmation | false |
+| `--fav` | | Save current wallpaper to favorites | false |
+| `--list-favs` | | List saved favorites | false |
+| `--from-favs` | | Set random wallpaper from favorites | false |
 | `--init` | `-I` | Copy config file to user config directory | false |
 | `--help` | `-h` | Show help | |
 
@@ -228,6 +236,27 @@ This will display a table of matching posts with ID, score, author, dimensions, 
 ```
 
 The preload cache uses separate folders per rating (e.g., preload_s, preload_q), each limited to MAX_PRELOAD_CACHE wallpapers. The current wallpaper is always preserved during cache cleanup.
+
+### Favorites
+
+Save wallpapers you love and rotate from your favorites collection:
+
+```bash
+# Save current wallpaper to favorites
+./konapaper.sh --fav
+
+# List all saved favorites
+./konapaper.sh --list-favs
+
+# Set a random wallpaper from your favorites
+./konapaper.sh --from-favs
+```
+
+The favorites directory defaults to `~/Pictures/Wallpapers`. You can customize this in your config:
+
+```bash
+FAVORITES_DIR="/path/to/your/favorites"
+```
 
 ### Logging
 
@@ -368,6 +397,22 @@ Alternatively, discover and export tags:
 
 This saves the top tags to EXPORTED_TAGS_FILE, which overrides RANDOM_TAGS_LIST if the file exists.
 
+### Favorites Management
+
+```bash
+# First, set a wallpaper normally
+./konapaper.sh --tags "landscape"
+
+# Save it to your favorites
+./konapaper.sh --fav
+
+# View your collection
+./konapaper.sh --list-favs
+
+# Later, rotate from your favorites
+./konapaper.sh --from-favs
+```
+
 ## API Documentation
 
 Konapaper uses the Moebooru API (compatible with Danbooru v1.13.0+). The API documentation is included in `api_doc.md` and covers:
@@ -406,6 +451,8 @@ ENABLE_LOGGING="true" LOG_LEVEL="detailed" ./konapaper.sh --dry-run --tags "test
 
 ### Code Style
 
+For detailed development guidelines, see `AGENTS.md`.
+
 Follow these guidelines for contributions:
 
 - **Shebang**: `#!/bin/bash`
@@ -440,6 +487,8 @@ Follow these guidelines for contributions:
 
 8. **Intermittent issues**: Enable logging to track execution details and identify patterns: `ENABLE_LOGGING="true"` in config.
 
+9. **Partial/corrupted wallpaper**: If wallpapers appear incomplete or filled with random colors when running the script quickly multiple times, this is prevented by atomic download handling. Downloads use a temporary file (`.tmp`) that is only renamed to the final file after completion, ensuring incomplete downloads are never used.
+
 ### Debug Mode
 
 For debugging, run with verbose output, enable logging, or check the API responses manually:
@@ -453,6 +502,12 @@ ENABLE_LOGGING="true" LOG_LEVEL="verbose" ./konapaper.sh --dry-run --tags "test"
 
 # Check recent log entries
 tail -f ~/.config/konapaper/konapaper.log
+
+# Test favorites functionality
+./konapaper.sh --list-favs
+
+# Clean up stale download files if needed
+find ~/.cache/konapaper -name "*.tmp" -delete
 ```
 
 ## Contributing
