@@ -65,6 +65,27 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
 
 4. Ensure `awww` daemon is running (the script will start it automatically if needed)
 
+### Code Structure
+
+The project is modularized for maintainability:
+
+```
+konapaper/
+├── konapaper.sh       # Main entry point
+├── konapaper.conf     # Default configuration
+├── lib/
+│   ├── config.sh      # Config loading, CLI parsing, defaults
+│   ├── logging.sh     # Logging functions
+│   ├── helpers.sh     # Converters, parsers
+│   ├── api.sh         # API URL building, JSON querying, downloads
+│   ├── wallpaper.sh   # Display server detection, wallpaper setting
+│   ├── discovery.sh   # Tag/artist/pool discovery
+│   ├── favorites.sh   # Favorites management, cache cleanup
+│   └── core.sh        # Preloading, main execution flow
+├── AGENTS.md          # Developer guidelines for AI agents
+└── api_doc.md         # Moebooru API documentation
+```
+
 ## Configuration
 
 Konapaper uses a configuration file (`konapaper.conf`) that allows you to set default values. The script searches for the config file in this order:
@@ -433,11 +454,11 @@ For more details, refer to `api_doc.md` or the official Moebooru documentation.
 Run linting and syntax checks:
 
 ```bash
-# Lint with shellcheck
-shellcheck konapaper.sh
+# Lint all scripts with shellcheck
+shellcheck konapaper.sh lib/*.sh
 
-# Syntax check
-bash -n konapaper.sh
+# Syntax check all files
+bash -n konapaper.sh && bash -n lib/*.sh
 
 # Dry run test
 ./konapaper.sh --dry-run --tags "test" --limit 1
@@ -447,6 +468,10 @@ bash -n konapaper.sh
 
 # Test logging functionality
 ENABLE_LOGGING="true" LOG_LEVEL="detailed" ./konapaper.sh --dry-run --tags "test" --limit 1
+
+# Test specific modules (via discovery modes)
+./konapaper.sh --discover-tags --limit 5
+./konapaper.sh --list-pools --limit 3
 ```
 
 ### Code Style
@@ -464,6 +489,7 @@ Follow these guidelines for contributions:
 - **Arrays**: Use indexed arrays, access with `${array[index]}`
 - **Error Handling**: Check exit codes with `if ! command; then`, redirect errors to stderr
 - **Security**: Quote all variables, validate inputs, use `mktemp` for temp files
+- **Modules**: Source order - config, logging, helpers, api, wallpaper, discovery, favorites, core
 - **Comments**: Add function headers, explain complex logic, use `# --- Section ---` for major sections
 - **Imports**: Source config files with `source "$file"` after shellcheck disable comment
 

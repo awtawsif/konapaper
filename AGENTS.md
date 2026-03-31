@@ -3,17 +3,54 @@
 ## Project Overview
 Konapaper is a bash-based wallpaper rotator for Wayland and X11, fetching wallpapers from Moebooru-based sites like Konachan.net. Features include advanced filtering, intelligent caching, favorites management, and cross-platform wallpaper tool support.
 
+## Code Structure
+```
+konapaper/
+├── konapaper.sh       # Main entry point
+├── konapaper.conf     # Default configuration
+├── lib/
+│   ├── config.sh      # Config loading, CLI parsing, defaults
+│   ├── logging.sh     # Logging functions
+│   ├── helpers.sh      # Converters, parsers
+│   ├── api.sh         # API URL building, JSON querying, downloads
+│   ├── wallpaper.sh   # Display server detection, wallpaper setting
+│   ├── discovery.sh   # Tag/artist/pool discovery
+│   ├── favorites.sh   # Favorites management, cache cleanup
+│   └── core.sh        # Preloading, main execution flow
+├── AGENTS.md          # Developer guidelines for AI agents
+└── api_doc.md         # Moebooru API documentation
+```
+
 ## Build/Lint/Test Commands
 
 ### Essential Commands
 ```bash
-shellcheck konapaper.sh    # Lint
-bash -n konapaper.sh       # Syntax check
+# Lint all scripts
+shellcheck konapaper.sh lib/*.sh
+
+# Syntax check all files
+bash -n konapaper.sh && bash -n lib/*.sh
+```
+
+### Single Operation Testing
+This is a bash script, not a test framework. Use `--dry-run` to test specific operations:
+```bash
+# Single wallpaper query test (no download)
+./konapaper.sh --dry-run --tags "landscape" --limit 1
+
+# Single tag discovery test
+./konapaper.sh --discover-tags --limit 5
+
+# Single pool query test
+./konapaper.sh --list-pools --limit 1
+
+# Single artist discovery test
+./konapaper.sh --discover-artists --limit 1
 ```
 
 ### Testing Commands
 ```bash
-# Quick tests
+# Quick functional tests
 ./konapaper.sh --dry-run --tags "landscape" --limit 3
 
 # Feature tests
@@ -90,15 +127,18 @@ echo "" | ./konapaper.sh --init                # Non-interactive init
 
 ## Architecture Patterns
 
-### Code Organization (top to bottom)
-1. Shebang and header comment
-2. Global variables and constants
-3. Config file loading
-4. Helper functions (converters, parsers)
-5. Logging functions
-6. CLI argument parsing
-7. Mode-specific functions (discovery, favorites, etc.)
-8. Main execution logic
+### Module Source Order
+Source modules in this order (dependencies matter):
+```bash
+source "$KONAPAPER_LIB_DIR/config.sh"
+source "$KONAPAPER_LIB_DIR/logging.sh"
+source "$KONAPAPER_LIB_DIR/helpers.sh"
+source "$KONAPAPER_LIB_DIR/api.sh"
+source "$KONAPAPER_LIB_DIR/wallpaper.sh"
+source "$KONAPAPER_LIB_DIR/discovery.sh"
+source "$KONAPAPER_LIB_DIR/favorites.sh"
+source "$KONAPAPER_LIB_DIR/core.sh"
+```
 
 ### Configuration Priority
 1. User config: `~/.config/konapaper/konapaper.conf`
@@ -114,7 +154,6 @@ echo "" | ./konapaper.sh --init                # Non-interactive init
 ### Process Management
 - **Locking:** Use `flock` to prevent concurrent execution
 - **Background Jobs:** Use `&` and `wait` for preloading
-- **Daemon Check:** Verify awww daemon is running if needed
 
 ## Dependencies
 
@@ -133,7 +172,7 @@ echo "" | ./konapaper.sh --init                # Non-interactive init
 3. Plan changes considering all supported platforms
 
 ### After Making Changes
-1. Run linting: `shellcheck konapaper.sh && bash -n konapaper.sh`
+1. Run linting: `shellcheck konapaper.sh lib/*.sh && bash -n konapaper.sh && bash -n lib/*.sh`
 2. Test with `--dry-run` to verify behavior
 3. Update `--help` text if adding new flags
 4. Update `README.md` and `konapaper.conf` if adding config options
