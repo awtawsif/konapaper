@@ -73,6 +73,33 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
 
 5. Ensure `awww` daemon is running (the script will start it automatically if needed)
 
+## Project Structure
+
+Konapaper uses a modular architecture. The main script (`konapaper.sh`) acts as a thin orchestrator that sources focused modules from the `lib/` directory:
+
+```
+konapaper/
+├── konapaper.sh              # Main entry point (orchestrator)
+├── konapaper.conf            # Default configuration file
+├── lib/
+│   ├── constants.sh          # Global variables, defaults, ANSI colors
+│   ├── config.sh             # Config file loading, random tag processing
+│   ├── helpers.sh            # Size converters, aspect ratio & page parsers
+│   ├── logging.sh            # Logging initialization, rotation, and log_* functions
+│   ├── formats.sh            # Animated format detection, extension parsing
+│   ├── display.sh            # Display server detection (Wayland/X11), wallpaper setting
+│   ├── download.sh           # API querying, filtering, and image downloading
+│   ├── cache.sh              # Preload management, cache cleanup, wallpaper selection
+│   ├── discovery.sh          # Tag, artist, and pool discovery
+│   ├── favorites.sh          # Save, list, and set wallpapers from favorites
+│   ├── init.sh               # Interactive & non-interactive initialization wizard
+│   └── cli.sh                # CLI argument parsing and help text
+├── api_doc.md                # Moebooru API documentation
+└── README.md
+```
+
+Each module is self-contained and responsible for a single area of functionality. All modules share global variables defined in `constants.sh` and set by `cli.sh` via the standard bash `source` mechanism.
+
 ## Configuration
 
 Konapaper uses a configuration file (`konapaper.conf`) that allows you to set default values. The script searches for the config file in this order:
@@ -465,11 +492,12 @@ For more details, refer to `api_doc.md` or the official Moebooru documentation.
 Run linting and syntax checks:
 
 ```bash
-# Lint with shellcheck
-shellcheck konapaper.sh
+# Lint all files with shellcheck
+shellcheck konapaper.sh lib/*.sh
 
-# Syntax check
+# Syntax check all files
 bash -n konapaper.sh
+for f in lib/*.sh; do bash -n "$f"; done
 
 # Dry run test
 ./konapaper.sh --dry-run --tags "test" --limit 1
