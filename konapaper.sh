@@ -25,6 +25,8 @@ MIN_SCORE=""
 ARTIST=""
 POOL_ID=""
 PRELOAD_COUNT=3
+PREFERRED_FORMAT="jpg"
+ANIMATED_ONLY=false
 DRY_RUN=false
 CLEAN_MODE=false
 FORCE_CLEAN=false
@@ -254,6 +256,10 @@ log_success() {
 # Load config before parsing CLI args
 load_config
 
+# Set defaults for format options
+PREFERRED_FORMAT="${PREFERRED_FORMAT:-auto}"
+ANIMATED_ONLY="${ANIMATED_ONLY:-false}"
+
 # Initialize logging
 log_init
 MAX_PRELOAD_CACHE=${MAX_PRELOAD_CACHE:-10}
@@ -342,6 +348,84 @@ parse_page_argument() {
     return 1
 }
 
+# --- Animated Format Helpers ---
+detect_animated_support() {
+    local tool="$1"
+    local animated_formats=""
+
+    case "$tool" in
+        awww)    animated_formats="gif" ;;
+        mpvpaper) animated_formats="gif,webm,mp4" ;;
+        swww)    animated_formats="gif" ;;
+        swaybg)  animated_formats="" ;;
+        hyprpaper) animated_formats="" ;;
+        feh)     animated_formats="" ;;
+        nitrogen) animated_formats="" ;;
+        fbsetbg) animated_formats="" ;;
+        xwallpaper) animated_formats="" ;;
+    esac
+
+    echo "$animated_formats"
+}
+
+get_extension_from_url() {
+    local url="$1"
+    local ext="${url##*.}"
+    case "$ext" in
+        jpg|jpeg|png|gif|webm) echo "$ext" ;;
+        *) echo "jpg" ;;
+    esac
+}
+
+get_format_filter() {
+    local preferred_format="$1"
+
+    # Only add animated for explicit gif/webm preference
+    if [[ "$preferred_format" == "gif" || "$preferred_format" == "webm" ]]; then
+        echo "animated"
+    fi
+}
+
+resolve_format() {
+    local preferred_format="$1"
+    local tool="$2"
+
+    if [[ "$preferred_format" != "auto" ]]; then
+        echo "$preferred_format"
+        return
+    fi
+
+    local animated_support
+    animated_support=$(detect_animated_support "$tool")
+
+    if [[ "$animated_support" == *"webm"* ]]; then
+        echo "webm"
+    elif [[ "$animated_support" == *"gif"* ]]; then
+        echo "gif"
+    else
+        echo "jpg"
+    fi
+}
+
+print_tool_animated_warning() {
+    local tool="$1"
+    local supported
+
+    supported=$(detect_animated_support "$tool")
+
+    if [[ -z "$supported" ]]; then
+        echo "  ⚠️ Your wallpaper tool ($tool) does not support animated wallpapers"
+        echo "  For animated support, consider installing:"
+        echo "    - awww (GIF): https://codeberg.org/LGFae/awww"
+        echo "    - mpvpaper (GIF, WebM, MP4): https://github.com/GhostNaN/mpvpaper"
+    elif [[ "$supported" == "gif" ]]; then
+        echo "  ℹ️ Your wallpaper tool ($tool) supports animated: $supported"
+        echo "  For video (WebM/MP4) support, install: mpvpaper"
+    else
+        echo "  ℹ️ Your wallpaper tool ($tool) supports animated: $supported"
+    fi
+}
+
 
 
 # --- Parse Args ---
@@ -367,6 +451,8 @@ while [[ "$#" -gt 0 ]]; do
          -m|--min-score) MIN_SCORE="$2"; shift ;;
          -a|--artist) ARTIST="$2"; shift ;;
         -P|--pool) POOL_ID="$2"; shift ;;
+        -f|--format) PREFERRED_FORMAT="$2"; shift ;;
+        --animated-only) ANIMATED_ONLY=true ;;
         -d|--dry-run) DRY_RUN=true ;;
         -D|--discover-tags) DISCOVER_TAGS=true ;;
         -A|--discover-artists) DISCOVER_ARTISTS=true ;;
@@ -397,6 +483,8 @@ while [[ "$#" -gt 0 ]]; do
             echo "  -m, --min-score      Minimum score filter (optional)"
             echo "  -a, --artist         Filter by artist/uploader (optional)"
             echo "  -P, --pool           Use pool ID instead of tag search"
+            echo "  -f, --format         Preferred format: jpg, gif, webm (default: jpg)"
+            echo "  --animated-only      Ignore user tags, search animated only"
                echo "  -cc, --clean-cache   Clean all preload_* folders (keeps current.jpg)"
                echo "  -cf, --clean-force   Clean without confirmation"
                echo "  -I, --init           Copy config file to user config directory"
@@ -481,7 +569,15 @@ mkdir -p "$CACHE_DIR"
 PRELOAD_DIR="$CACHE_DIR/preload_$RATING"
 mkdir -p "$PRELOAD_DIR"
 
-CURRENT_WALLPAPER="$CACHE_DIR/current.jpg"
+get_current_wallpaper() {
+    local existing
+    existing=$(find "$CACHE_DIR" -maxdepth 1 -type f -name "current.*" | head -n1)
+    if [[ -n "$existing" ]]; then
+        echo "$existing"
+    else
+        echo "$CACHE_DIR/current.jpg"
+    fi
+}
 
 # --- Cleanup Mode ---
 if $CLEAN_MODE; then
@@ -512,13 +608,38 @@ fi
 download_wallpaper() {
     local outfile="$1"
     local ENCODED_TAGS
-    ENCODED_TAGS="${TAGS// /+}"
+    
+    # Get wallpaper tool for format decisions
+    local detection
+    detection=$(detect_display_server)
+    local wallpaper_tool="${detection#*:}"
+    
+    # Determine effective tags based on ANIMATED_ONLY
+    local effective_tags
+    if [[ "$ANIMATED_ONLY" == "true" ]]; then
+        effective_tags="animated"
+    else
+        effective_tags="$TAGS"
+    fi
+    
+    # Add animated tag if needed
+    local format_filter
+    format_filter=$(get_format_filter "$PREFERRED_FORMAT")
+    if [[ -n "$format_filter" && "$effective_tags" != *"$format_filter"* ]]; then
+        if [[ -n "$effective_tags" ]]; then
+            effective_tags="${effective_tags}+${format_filter}"
+        else
+            effective_tags="${format_filter}"
+        fi
+    fi
+    
+    local encoded_effective_tags="${effective_tags// /+}"
 
     local API_URL
     if [[ -n "$POOL_ID" ]]; then
         API_URL="${BASE_URL}/pool/show.json?id=${POOL_ID}"
     else
-        API_URL="${BASE_URL}${POST_ENDPOINT}?limit=${LIMIT}&page=${PAGE}&tags=${ENCODED_TAGS}+rating:${RATING}+order:${ORDER}"
+        API_URL="${BASE_URL}${POST_ENDPOINT}?limit=${LIMIT}&page=${PAGE}&tags=${encoded_effective_tags}+rating:${RATING}+order:${ORDER}"
         [[ -n "$MIN_SCORE" ]] && API_URL="${API_URL}+score:>=${MIN_SCORE}"
         [[ -n "$ARTIST" ]] && API_URL="${API_URL}+user:${ARTIST}"
     fi
@@ -613,7 +734,15 @@ download_wallpaper() {
     log_write "INFO" "Downloading image: $IMAGE_URL"
     log_file_operation "download" "$outfile" "from $IMAGE_URL"
     
-    local tmpfile="${outfile}.tmp"
+    # Get extension from URL and update outfile path
+    local ext
+    ext=$(get_extension_from_url "$IMAGE_URL")
+    local outfile_with_ext="${outfile}.${ext}"
+    
+    # Store the actual URL for extension reference
+    echo "$IMAGE_URL" > "${CACHE_DIR}/.last_url"
+    
+    local tmpfile="${outfile_with_ext}.tmp"
     if ! curl -sfL "$IMAGE_URL" -o "$tmpfile"; then
         echo "Error: download failed."
         log_error "Download failed: $IMAGE_URL"
@@ -622,27 +751,27 @@ download_wallpaper() {
         return 1
     fi
     
-    mv "$tmpfile" "$outfile"
+    mv "$tmpfile" "$outfile_with_ext"
 
     local size
-    size=$(stat -c%s "$outfile")
+    size=$(stat -c%s "$outfile_with_ext")
     if (( MAX_FILE_SIZE_BYTES > 0 && size > MAX_FILE_SIZE_BYTES )); then
         echo "Skipped (too large: $(human_readable_size "$size"))"
         log_warning "Image skipped due to size limit: $(human_readable_size "$size") > $MAX_FILE_SIZE"
-        log_file_operation "delete" "$outfile" "size limit exceeded"
-        rm -f "$outfile"
+        log_file_operation "delete" "$outfile_with_ext" "size limit exceeded"
+        rm -f "$outfile_with_ext"
         return 1
     fi
     if (( MIN_FILE_SIZE_BYTES > 0 && size < MIN_FILE_SIZE_BYTES )); then
         echo "Skipped (too small: $(human_readable_size "$size"))"
         log_warning "Image skipped due to minimum size: $(human_readable_size "$size") < $MIN_FILE_SIZE"
-        log_file_operation "delete" "$outfile" "below minimum size"
-        rm -f "$outfile"
+        log_file_operation "delete" "$outfile_with_ext" "below minimum size"
+        rm -f "$outfile_with_ext"
         return 1
     fi
 
     echo "-> Download complete ($(human_readable_size "$size"))"
-    log_success "Image downloaded successfully: $outfile ($(human_readable_size "$size"))"
+    log_success "Image downloaded successfully: $outfile_with_ext ($(human_readable_size "$size"))"
     return 0
 }
 
@@ -782,11 +911,13 @@ if $INIT_MODE; then
     echo "Detected display server: $display_server"
     if [[ -n "$wallpaper_tool" ]]; then
         echo "Available wallpaper tool: $wallpaper_tool"
+        print_tool_animated_warning "$wallpaper_tool"
     else
         echo "No suitable wallpaper tool found"
         echo "Please install a wallpaper tool for your display server:"
         if [[ "$display_server" == "wayland" ]]; then
-            echo "  - awww (recommended)"
+            echo "  - awww (recommended, supports GIF)"
+            echo "  - mpvpaper (supports GIF, WebM, MP4)"
             echo "  - swaybg"
             echo "  - hyprpaper"
         else
@@ -794,6 +925,7 @@ if $INIT_MODE; then
             echo "  - nitrogen"
             echo "  - fbsetbg"
             echo "  - xwallpaper"
+            echo "  - mpvpaper (supports GIF, WebM, MP4)"
         fi
     fi
     
@@ -849,7 +981,7 @@ fi
 # --- Preload Handling ---
 preload_wallpapers() {
     local existing
-    existing=$(find "$PRELOAD_DIR" -type f -name "*.jpg" | wc -l)
+    existing=$(find "$PRELOAD_DIR" -type f \( -name "*.jpg" -o -name "*.gif" -o -name "*.webm" -o -name "*.png" \) | wc -l)
     local available_slots=$(( MAX_PRELOAD_CACHE - existing ))
     if (( available_slots <= 0 )); then
         echo "Preload cache full ($existing wallpapers)."
@@ -861,7 +993,7 @@ preload_wallpapers() {
     fi
     echo "Preloading up to $to_preload wallpapers..."
     for (( i=1; i<=to_preload; i++ )); do
-        local tmpfile="$PRELOAD_DIR/preload_$RANDOM.jpg"
+        local tmpfile="$PRELOAD_DIR/preload_$RANDOM"
         download_wallpaper "$tmpfile" &
         sleep 0.3
     done
@@ -871,10 +1003,13 @@ preload_wallpapers() {
 
 select_next_wallpaper() {
     local next
-    next=$(find "$PRELOAD_DIR" -type f -name "*.jpg" | shuf -n 1)
+    next=$(find "$PRELOAD_DIR" -type f \( -name "*.jpg" -o -name "*.gif" -o -name "*.webm" -o -name "*.png" \) | shuf -n 1)
     if [ -n "$next" ]; then
-        mv "$next" "$CURRENT_WALLPAPER"
-        echo "$CURRENT_WALLPAPER"
+        local ext
+        ext=$(get_extension_from_url "$next")
+        local current_wallpaper="$CACHE_DIR/current.$ext"
+        mv "$next" "$current_wallpaper"
+        echo "$current_wallpaper"
     else
         return 1
     fi
@@ -947,7 +1082,8 @@ list_pools() {
 }
 
 save_to_favorites() {
-    local source="$CURRENT_WALLPAPER"
+    local source
+    source=$(get_current_wallpaper)
     
     if [[ ! -f "$source" ]]; then
         echo "Error: No current wallpaper found at $source"
@@ -958,8 +1094,10 @@ save_to_favorites() {
     local fav_dir="${FAVORITES_DIR:-$HOME/Pictures/Wallpapers}"
     mkdir -p "$fav_dir"
     
+    local ext
+    ext=$(get_extension_from_url "$source")
     local filename
-    filename="wallpaper_$(date '+%Y-%m-%d_%H%M%S').jpg"
+    filename="wallpaper_$(date '+%Y-%m-%d_%H%M%S').${ext}"
     local dest="$fav_dir/$filename"
     
     if cp "$source" "$dest"; then
@@ -984,7 +1122,7 @@ list_favorites() {
     fi
     
     local count
-    count=$(find "$fav_dir" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" \) | wc -l)
+    count=$(find "$fav_dir" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.gif" -o -name "*.webm" \) | wc -l)
     
     if (( count == 0 )); then
         echo "No favorites found in $fav_dir"
@@ -1005,7 +1143,7 @@ list_favorites() {
         local name
         name=$(basename "$file")
         echo "  $name  ($size_human)"
-    done < <(find "$fav_dir" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" \) -print0)
+    done < <(find "$fav_dir" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.gif" -o -name "*.webm" \) -print0)
     
     echo ""
     echo "Total: $count favorite(s) ($(human_readable_size "$total_size"))"
@@ -1023,7 +1161,7 @@ set_from_favorites() {
     fi
     
     local wallpapers
-    wallpapers=$(find "$fav_dir" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" \))
+    wallpapers=$(find "$fav_dir" -maxdepth 1 -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.gif" -o -name "*.webm" \))
     
     if [[ -z "$wallpapers" ]]; then
         echo "No favorites found in $fav_dir"
@@ -1092,8 +1230,13 @@ if [ -n "$next_wall" ]; then
 else
     log_write "INFO" "No cached wallpapers found, downloading new one"
     echo "No cached wallpapers found; downloading..."
-    if download_wallpaper "$CURRENT_WALLPAPER"; then
-        set_wallpaper "$CURRENT_WALLPAPER"
+    
+    temp_wallpaper="$CACHE_DIR/current.tmp"
+    if download_wallpaper "$temp_wallpaper"; then
+        ext=$(get_extension_from_url "$(cat "$CACHE_DIR/.last_url" 2>/dev/null)")
+        final_wallpaper="$CACHE_DIR/current.$ext"
+        [[ -f "${temp_wallpaper}.${ext}" ]] && mv "${temp_wallpaper}.${ext}" "$final_wallpaper"
+        set_wallpaper "$final_wallpaper"
     else
         log_error "Failed to download wallpaper"
         echo "Failed to fetch wallpaper."
