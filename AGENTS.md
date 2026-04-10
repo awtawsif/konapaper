@@ -36,10 +36,18 @@ bash -n konapaper.sh       # Syntax check
 
 ### Config/Lock Tests
 ```bash
-./konapaper.sh --init                          # Interactive init
-echo "" | ./konapaper.sh --init                # Non-interactive init
+./konapaper.sh --init                          # Non-interactive init (auto-detects)
+./konapaper.sh --init-interactive             # Interactive wizard with color prompts
+echo "" | ./konapaper.sh --init                # Non-interactive init via stdin
 ./konapaper.sh --clean-cache                   # Cache cleanup (requires confirmation)
 ./konapaper.sh --clean-force                   # Force cleanup
+```
+
+### Animated Format Tests
+```bash
+./konapaper.sh --format gif --dry-run          # Test GIF format filtering
+./konapaper.sh --format webm --dry-run         # Test WebM format filtering
+./konapaper.sh --animated-only --dry-run       # Test animated-only search
 ```
 
 ## Code Style Guidelines
@@ -158,3 +166,4 @@ Only `.jpg` files are selected; `.tmp` files are automatically skipped.
 - Long flags: `--verbose-name` format
 - Boolean flags: `FLAG_NAME=true` in code, no value on CLI
 - Value flags: `--flag value` pattern, shift in case statement
+- Special cases: `-ii` for `--init-interactive`, `-cc`/`-cf` for cache cleanup

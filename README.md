@@ -18,6 +18,8 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
 - **Custom Commands**: Users can configure custom wallpaper setting commands
 - **Configurable**: Extensive configuration options via config file or command-line arguments
 - **Favorites System**: Save wallpapers you love to a dedicated folder and rotate from your favorites collection
+- **Animated Wallpaper Support**: Download and set animated wallpapers (GIF, WebM) with configurable format preferences
+- **Interactive Initialization**: Guided setup with color prompts for easy first-time configuration
 
 ## Prerequisites
 
@@ -63,7 +65,13 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
    ```
    This copies the default config file to `~/.config/konapaper/konapaper.conf`.
 
-4. Ensure `awww` daemon is running (the script will start it automatically if needed)
+4. Run interactively for guided setup with color prompts (recommended for first-time users):
+   ```bash
+   ./konapaper.sh --init-interactive
+   ```
+   This provides an interactive wizard that auto-detects your display server and wallpaper tools, then guides you through configuration.
+
+5. Ensure `awww` daemon is running (the script will start it automatically if needed)
 
 ## Configuration
 
@@ -82,6 +90,11 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 - **`RATING`**: Content rating filter - `"s"` (safe), `"q"` (questionable), `"e"` (explicit) (default: `"s"`)
 - **`ORDER`**: Sort order - `"random"`, `"score"`, `"date"` (default: `"random"`)
 - **`PAGE`**: Page number, 'random', or 'MIN-MAX' range (default: 1)
+
+#### Animated Wallpaper Support
+
+- **`PREFERRED_FORMAT`**: Preferred wallpaper format - `"jpg"`, `"gif"`, or `"webm"` (default: `"jpg"`)
+- **`ANIMATED_ONLY`**: When true, ignores user tags and searches only for animated wallpapers (default: false)
 
 #### Advanced Filtering
 
@@ -163,6 +176,13 @@ WALLPAPER_COMMAND="hyprctl hyprpaper preload {IMAGE}; hyprctl hyprpaper wallpape
 
 # Download from a specific pool
 ./konapaper.sh --pool 1234
+
+# Use animated wallpapers (GIF or WebM)
+./konapaper.sh --format gif
+./konapaper.sh --format webm
+
+# Search animated wallpapers only (ignores user tags)
+./konapaper.sh --animated-only
 ```
 
 ### Command-Line Options
@@ -196,7 +216,10 @@ WALLPAPER_COMMAND="hyprctl hyprpaper preload {IMAGE}; hyprctl hyprpaper wallpape
 | `--fav` | | Save current wallpaper to favorites | false |
 | `--list-favs` | | List saved favorites | false |
 | `--from-favs` | | Set random wallpaper from favorites | false |
-| `--init` | `-I` | Copy config file to user config directory | false |
+| `--init` | `-I` | Initialize config (interactive prompts) | false |
+| `--init-interactive` | `-ii` | Non-interactive init with auto-detection | false |
+| `--format` | `-f` | Preferred format: jpg/gif/webm (default: jpg) | jpg |
+| `--animated-only` | | Ignore user tags, search animated only | false |
 | `--help` | `-h` | Show help | |
 
 ### Discovery Modes
@@ -310,15 +333,24 @@ The `{IMAGE}` placeholder gets replaced with the actual wallpaper path. If `WALL
 ### Initialization
 
 ```bash
-# Initialize configuration (auto-detects display server and wallpaper tool)
+# Initialize configuration (non-interactive, auto-detects display server and wallpaper tool)
 ./konapaper.sh --init
+
+# Interactive mode with guided setup and color prompts (recommended for first-time users)
+./konapaper.sh --init-interactive
 ```
 
-This command:
+The `--init` command:
 - Detects your display server (Wayland/X11)
 - Finds available wallpaper tools
 - Sets up the configuration file with appropriate defaults
 - Configures the active wallpaper command for your detected tool
+
+The `--init-interactive` command provides a guided wizard with:
+- Color-coded prompts and feedback
+- Auto-detection of your display server and wallpaper tools
+- Guided configuration of options
+- Non-interactive mode with auto-detection using `--init`
 
 ## Examples
 
