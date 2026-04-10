@@ -4,6 +4,62 @@
 # Parses command-line arguments and displays help text
 # =================================================================
 
+display_help() {
+    echo ""
+    echo "${C_BOLD_CYAN}╔══════════════════════════════════════════════════════════╗${C_RESET}"
+    echo "${C_BOLD_CYAN}║${C_RESET}               ${C_BOLD_MAGENTA}✦  Konapaper  —  Help Menu  ✦${C_RESET}               ${C_BOLD_CYAN}║${C_RESET}"
+    echo "${C_BOLD_CYAN}╚══════════════════════════════════════════════════════════╝${C_RESET}"
+    echo "${C_BOLD_WHITE}Usage:${C_RESET} ${C_CYAN}$0${C_RESET} [options]"
+    echo ""
+
+    echo "  ${C_BOLD_YELLOW}🔍  Search & Discovery${C_RESET}"
+    echo "    ${C_BOLD_WHITE}-t, --tags${C_RESET} ${C_CYAN}<tags>${C_RESET}       Search tags (e.g. 'scenic sky')"
+    echo "    ${C_BOLD_WHITE}-R, --random-tags${C_RESET} ${C_CYAN}<n>${C_RESET}   Select <n> random tags from config"
+    echo "    ${C_BOLD_WHITE}-D, --discover-tags${C_RESET}     Discover and show popular tags"
+    echo "    ${C_BOLD_WHITE}-A, --discover-artists${C_RESET}  Discover and show popular artists"
+    echo "    ${C_BOLD_WHITE}-E, --export-tags${C_RESET}       Export discovered tags to file"
+    echo ""
+
+    echo "  ${C_BOLD_GREEN}🎯  Filters & Constraints${C_RESET}"
+    echo "    ${C_BOLD_WHITE}-r, --rating${C_RESET} ${C_CYAN}<r>${C_RESET}      s (safe), q (questionable), e (explicit)"
+    echo "    ${C_BOLD_WHITE}-o, --order${C_RESET} ${C_CYAN}<o>${C_RESET}       random, score, date"
+    echo "    ${C_BOLD_WHITE}-l, --limit${C_RESET} ${C_CYAN}<n>${C_RESET}       Number of posts to fetch (default: 50)"
+    echo "    ${C_BOLD_WHITE}-p, --page${C_RESET} ${C_CYAN}<p>${C_RESET}        Page number, 'random', or 'MIN-MAX' range"
+    echo "    ${C_BOLD_WHITE}-s, --max-file-size${C_RESET} ${C_CYAN}<sz>${C_RESET} Max file size (e.g. 2MB, 0 to disable)"
+    echo "    ${C_BOLD_WHITE}-z, --min-file-size${C_RESET} ${C_CYAN}<sz>${C_RESET} Min file size (e.g. 500KB)"
+    echo "    ${C_BOLD_WHITE}-m, --min-score${C_RESET} ${C_CYAN}<n>${C_RESET}     Minimum score filter"
+    echo "    ${C_BOLD_WHITE}-a, --artist${C_RESET} ${C_CYAN}<name>${C_RESET}    Filter by artist/uploader"
+    echo ""
+
+    echo "  ${C_BOLD_CYAN}📐  Resolution & Media${C_RESET}"
+    echo "    ${C_BOLD_WHITE}--min-width${C_RESET} ${C_CYAN}<px>${C_RESET}       Minimum width in pixels"
+    echo "    ${C_BOLD_WHITE}--max-width${C_RESET} ${C_CYAN}<px>${C_RESET}       Maximum width in pixels"
+    echo "    ${C_BOLD_WHITE}--min-height${C_RESET} ${C_CYAN}<px>${C_RESET}      Minimum height in pixels"
+    echo "    ${C_BOLD_WHITE}--max-height${C_RESET} ${C_CYAN}<px>${C_RESET}      Maximum height in pixels"
+    echo "    ${C_BOLD_WHITE}--aspect-ratio${C_RESET} ${C_CYAN}<r>${C_RESET}   Aspect ratio (e.g. 16:9, 21:9, 4:3)"
+    echo "    ${C_BOLD_WHITE}-f, --format${C_RESET} ${C_CYAN}<fmt>${C_RESET}     Preferred: jpg, gif, webm"
+    echo "    ${C_BOLD_WHITE}--animated-only${C_RESET}       Search animated content only"
+    echo ""
+
+    echo "  ${C_BOLD_MAGENTA}⭐  Favorites & Pools${C_RESET}"
+    echo "    ${C_BOLD_WHITE}-P, --pool${C_RESET} ${C_CYAN}<id>${C_RESET}        Use pool ID instead of tag search"
+    echo "    ${C_BOLD_WHITE}-L, --list-pools${C_RESET}       List available pools"
+    echo "    ${C_BOLD_WHITE}-S, --search-pools${C_RESET} ${C_CYAN}<str>${C_RESET} Search pools by name"
+    echo "    ${C_BOLD_WHITE}--fav${C_RESET}                  Save current wallpaper to favorites"
+    echo "    ${C_BOLD_WHITE}--list-favs${C_RESET}            List saved favorites"
+    echo "    ${C_BOLD_WHITE}--from-favs${C_RESET}            Set random wallpaper from favorites"
+    echo ""
+
+    echo "  ${C_BOLD_BLUE}⚙  System & Maintenance${C_RESET}"
+    echo "    ${C_BOLD_WHITE}-I, --init${C_RESET}             Run initialization wizard"
+    echo "    ${C_BOLD_WHITE}-ii, --init-interactive${C_RESET} Force interactive init mode"
+    echo "    ${C_BOLD_WHITE}-cc, --clean-cache${C_RESET}      Clean preload folders"
+    echo "    ${C_BOLD_WHITE}-cf, --clean-force${C_RESET}      Force clean without confirmation"
+    echo "    ${C_BOLD_WHITE}-d, --dry-run${C_RESET}           Show results without downloading"
+    echo "    ${C_BOLD_WHITE}-h, --help${C_RESET}              Show this beautiful help menu"
+    echo ""
+}
+
 parse_cli_args() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
@@ -44,38 +100,8 @@ parse_cli_args() {
               --list-favs) LIST_FAVS=true ;;
               --from-favs) FROM_FAVS=true ;;
               -h|--help)
-                echo "Usage: $0 [options]"
-                echo "  -t, --tags           Tags (e.g. 'scenic sky')"
-                echo "  -r, --rating         s/q/e (default: s)"
-                echo "  -o, --order          random, score, date"
-                echo "  -l, --limit          Number of posts to query (default: 50)"
-                 echo "  -p, --page           Page number, 'random', or 'MIN-MAX' range (default: 1)"
-                 echo "  -s, --max-file-size  Max file size (e.g. 500KB, 2MB; 0 to disable, default: 2MB)"
-                echo "  -z, --min-file-size  Min file size (e.g. 100KB, 1MB; 0 to disable, default: disabled)"
-                echo "  --min-width         Minimum width in pixels (e.g., 1920)"
-                echo "  --max-width         Maximum width in pixels (e.g., 3840)"
-                echo "  --min-height        Minimum height in pixels (e.g., 1080)"
-                echo "  --max-height        Maximum height in pixels (e.g., 2160)"
-                echo "  --aspect-ratio      Aspect ratio (e.g., 16:9, 21:9, 4:3, 1:1, 3:2, 5:4, 32:9 or custom X:Y)"
-                echo "  -m, --min-score      Minimum score filter (optional)"
-                echo "  -a, --artist         Filter by artist/uploader (optional)"
-                echo "  -P, --pool           Use pool ID instead of tag search"
-                echo "  -f, --format         Preferred format: jpg, gif, webm (default: jpg)"
-                echo "  --animated-only      Ignore user tags, search animated only"
-                   echo "  -cc, --clean-cache   Clean all preload_* folders (keeps current.jpg)"
-                    echo "  -cf, --clean-force   Clean without confirmation"
-                    echo "  -I, --init           Initialize config (interactive prompts)"
-                    echo "  -d, --dry-run        Show matching results without downloading"
-                   echo "  -D, --discover-tags  Discover popular tags"
-                    echo "  -A, --discover-artists Discover artists"
-                    echo "  -L, --list-pools     List available pools"
-                    echo "  -S, --search-pools   Search pools by name"
-                     echo "  -R, --random-tags    Number of random tags to select from config list"
-                     echo "  -E, --export-tags    Export discovered tags to file (use with --discover-tags)"
-                     echo "  --fav                Save current wallpaper to favorites"
-                     echo "  --list-favs          List saved favorites"
-                     echo "  --from-favs          Set random wallpaper from favorites"
-                  exit 0 ;;
+                display_help
+                exit 0 ;;
             *) echo "Unknown parameter: $1"; exit 1 ;;
         esac
         shift
