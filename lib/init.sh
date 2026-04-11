@@ -262,6 +262,21 @@ run_init_mode() {
         input=$(prompt_with_default "Favorites Directory" "$HOME/Pictures/Wallpapers" "/path/to/favorites")
         favorites_dir="$input"
 
+        print_section_header "🔔  Notifications"
+        input=$(prompt_yes_no "Enable Desktop Notifications (notify-send)" "false")
+        enable_notifications="$input"
+
+        if [[ "$enable_notifications" == "true" ]]; then
+            input=$(prompt_with_default "Completion Toast Timeout (ms)" "5000" "3000, 5000, 8000")
+            notify_timeout="$input"
+
+            input=$(prompt_yes_no "Notify on Background Preload Progress" "false")
+            notify_preload="$input"
+        else
+            notify_timeout="5000"
+            notify_preload="false"
+        fi
+
         print_section_header "📋  Logging"
         input=$(prompt_yes_no "Enable Logging" "false")
         enable_logging="$input"
@@ -326,6 +341,11 @@ run_init_mode() {
             echo ""
             echo "# --- Favorites ---"
             echo "FAVORITES_DIR=\"$favorites_dir\""
+            echo ""
+            echo "# --- Notifications ---"
+            echo "ENABLE_NOTIFICATIONS=$enable_notifications"
+            echo "NOTIFY_TIMEOUT=$notify_timeout"
+            echo "NOTIFY_PRELOAD=$notify_preload"
             echo ""
             echo "# --- Logging ---"
             echo "ENABLE_LOGGING=$enable_logging"

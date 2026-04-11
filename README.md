@@ -93,7 +93,8 @@ konapaper/
 │   ├── discovery.sh          # Tag, artist, and pool discovery
 │   ├── favorites.sh          # Save, list, and set wallpapers from favorites
 │   ├── init.sh               # Interactive & non-interactive initialization wizard
-│   └── cli.sh                # CLI argument parsing and help text
+│   ├── cli.sh                # CLI argument parsing and help text
+│   └── notifications.sh      # Desktop notification toasts with progress updates
 ├── api_doc.md                # Moebooru API documentation
 └── README.md
 ```
@@ -150,6 +151,12 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 
 - **`DISCOVER_LIMIT`**: Number of items to fetch for discovery modes (default: 20)
 - **`EXPORTED_TAGS_FILE`**: Path to file where discovered tags are exported (default: ~/.config/konapaper/discovered_tags.txt)
+
+#### Notification Configuration
+
+- **`ENABLE_NOTIFICATIONS`**: Enable desktop notification toasts using `notify-send` (default: "false")
+- **`NOTIFY_TIMEOUT`**: Timeout for completion toast in milliseconds (default: 5000)
+- **`NOTIFY_PRELOAD`**: Enable notifications for background preload progress (default: "false")
 
 #### Logging Configuration
 
@@ -307,6 +314,34 @@ The favorites directory defaults to `~/Pictures/Wallpapers`. You can customize t
 ```bash
 FAVORITES_DIR="/path/to/your/favorites"
 ```
+
+### Notifications
+
+Konapaper supports desktop notification toasts that provide real-time progress updates as wallpapers are fetched and applied. Notifications use `notify-send` (freedesktop notifications) and are disabled by default.
+
+```bash
+# Enable notifications in config file
+echo 'ENABLE_NOTIFICATIONS="true"' >> ~/.config/konapaper/konapaper.conf
+
+# Set completion toast timeout (milliseconds)
+echo 'NOTIFY_TIMEOUT=5000' >> ~/.config/konapaper/konapaper.conf
+
+# Enable preload progress notifications (optional, runs in background)
+echo 'NOTIFY_PRELOAD="true"' >> ~/.config/konapaper/konapaper.conf
+```
+
+**Progress Flow:**
+Notifications update in-place using a single toast that changes as the script progresses:
+
+1. 🔍 **Querying API** — Shows tags, rating, and order being used
+2. ⬇️ **Downloading** — Fetching image from Konachan
+3. 🖼️ **Setting Wallpaper** — Applying via detected wallpaper tool
+4. ✅ **Wallpaper Set** — Final confirmation with filename
+
+**Additional Notifications:**
+- ⭐ **Favorite Saved** — Confirms wallpaper saved to favorites
+- ⏳ **Preloading** — Background preload progress (when `NOTIFY_PRELOAD=true`)
+- ❌ **Errors** — API failures, download failures, no matching results, wallpaper tool failures
 
 ### Logging
 

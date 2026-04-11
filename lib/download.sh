@@ -46,6 +46,7 @@ download_wallpaper() {
     echo "-> Querying API: $API_URL"
     log_api_call "$API_URL"
     log_file_operation "create" "temp_json_file"
+    notify_progress_update "Querying API" "Fetching from Konachan..."
     local json
     json=$(mktemp)
     if ! curl -sf "$API_URL" > "$json"; then
@@ -97,20 +98,20 @@ download_wallpaper() {
             --argjson max_width "$MAX_WIDTH_NUM" --argjson min_width "$MIN_WIDTH_NUM" \
             --argjson max_height "$MAX_HEIGHT_NUM" --argjson min_height "$MIN_HEIGHT_NUM" \
             --argjson aspect_ratio "$ASPECT_RATIO_FLOAT" \
-'if type == "array" then . else .posts? // . end | 
+'if type == "array" then . else .posts? // . end |
  map(select(
-    type == "object" and 
-    .file_size != null and 
-    .width != null and 
+    type == "object" and
+    .file_size != null and
+    .width != null and
     .height != null and
-    (.file_size <= $max_size or $max_size == 0) and 
+    (.file_size <= $max_size or $max_size == 0) and
     (.file_size >= $min_size or $min_size == 0) and
     (.width <= $max_width or $max_width == 0) and
     (.width >= $min_width or $min_width == 0) and
     (.height <= $max_height or $max_height == 0) and
     (.height >= $min_height or $min_height == 0) and
     ($aspect_ratio == 0 or (.width / .height >= ($aspect_ratio - 0.02) and .width / .height <= ($aspect_ratio + 0.02)))
- )) | 
+ )) |
  .[].file_url' "$json" | shuf -n 1)
     fi
 
@@ -126,27 +127,30 @@ download_wallpaper() {
         else
             echo "No suitable image found between ${MIN_FILE_SIZE} and ${MAX_FILE_SIZE}."
         fi
+        notify_error "No Results" "No wallpaper matched your filters"
         return 1
     fi
 
     echo "-> Downloading: $IMAGE_URL"
     log_write "INFO" "Downloading image: $IMAGE_URL"
     log_file_operation "download" "$outfile" "from $IMAGE_URL"
-    
+    notify_progress_update "Downloading" "Fetching image..."
+
     # Get extension from URL and update outfile path
     local ext
     ext=$(get_extension_from_url "$IMAGE_URL")
     local outfile_with_ext="${outfile}.${ext}"
-    
+
     # Store the actual URL for extension reference
     echo "$IMAGE_URL" > "${CACHE_DIR}/.last_url"
-    
+
     local tmpfile="${outfile_with_ext}.tmp"
     if ! curl -sfL "$IMAGE_URL" -o "$tmpfile"; then
         echo "Error: download failed."
         log_error "Download failed: $IMAGE_URL"
         log_file_operation "delete" "$tmpfile"
         rm -f "$tmpfile"
+        notify_error "Download Failed" "Could not download image"
         return 1
     fi
     
@@ -159,6 +163,7 @@ download_wallpaper() {
         log_warning "Image skipped due to size limit: $(human_readable_size "$size") > $MAX_FILE_SIZE"
         log_file_operation "delete" "$outfile_with_ext" "size limit exceeded"
         rm -f "$outfile_with_ext"
+        notify_error "Too Large" "Image $(human_readable_size "$size") exceeds $(human_readable_size "$MAX_FILE_SIZE")"
         return 1
     fi
     if (( MIN_FILE_SIZE_BYTES > 0 && size < MIN_FILE_SIZE_BYTES )); then
@@ -166,10 +171,12 @@ download_wallpaper() {
         log_warning "Image skipped due to minimum size: $(human_readable_size "$size") < $MIN_FILE_SIZE"
         log_file_operation "delete" "$outfile_with_ext" "below minimum size"
         rm -f "$outfile_with_ext"
+        notify_error "Too Small" "Image $(human_readable_size "$size") below minimum $(human_readable_size "$MIN_FILE_SIZE")"
         return 1
     fi
 
     echo "-> Download complete ($(human_readable_size "$size"))"
     log_success "Image downloaded successfully: $outfile_with_ext ($(human_readable_size "$size"))"
+    notify_progress_update "Download complete" "$(human_readable_size "$size")"
     return 0
 }

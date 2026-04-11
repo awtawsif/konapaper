@@ -73,7 +73,7 @@ detect_display_server() {
 
 set_wallpaper() {
     local img="$1"
-    
+
     # Use configured wallpaper command if specified
     if [[ -n "$WALLPAPER_COMMAND" ]]; then
         echo "Using wallpaper command..."
@@ -84,22 +84,23 @@ set_wallpaper() {
             log_wallpaper_set "$img" "$cmd"
         else
             log_error "Wallpaper command failed: $cmd"
+            notify_error "Wallpaper Failed" "Custom command failed: $(basename "$img")"
         fi
         return $?
     fi
-    
+
     # Auto-detect and use default wallpaper tool command from config
     local detection
     detection=$(detect_display_server)
     local display_server="${detection%:*}"
     local wallpaper_tool="${detection#*:}"
-    
+
     echo "Detected display server: $display_server"
     echo "Using wallpaper tool: $wallpaper_tool"
-    
+
     local tool_var="WALLPAPER_COMMAND_${wallpaper_tool^^}"
     local tool_cmd="${!tool_var}"
-    
+
     if [[ -n "$tool_cmd" ]]; then
         echo "Using default command for $wallpaper_tool"
         local cmd="${tool_cmd//\{IMAGE\}/\"$img\"}"
@@ -109,12 +110,14 @@ set_wallpaper() {
             log_wallpaper_set "$img" "$cmd"
         else
             log_error "Wallpaper command failed: $cmd"
+            notify_error "Wallpaper Failed" "$wallpaper_tool failed to set $(basename "$img")"
         fi
         return $?
     else
         echo "Error: No command configured for $wallpaper_tool"
         echo "Please set WALLPAPER_COMMAND in your config file or install a supported tool."
         log_error "No command configured for $wallpaper_tool"
+        notify_error "No Wallpaper Tool" "No command configured for $wallpaper_tool"
         return 1
     fi
 }

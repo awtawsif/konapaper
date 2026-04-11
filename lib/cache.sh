@@ -44,13 +44,23 @@ preload_wallpapers() {
         to_preload=$available_slots
     fi
     echo "Preloading up to $to_preload wallpapers..."
+    if [[ "$NOTIFY_PRELOAD" == "true" ]]; then
+        notify_progress_update "Preloading" "0/$to_preload wallpapers"
+    fi
+    local completed=0
     for (( i=1; i<=to_preload; i++ )); do
         local tmpfile="$PRELOAD_DIR/preload_$RANDOM"
         download_wallpaper "$tmpfile" &
         sleep 0.3
     done
     wait
+    # Count successfully preloaded
+    completed=$(find "$PRELOAD_DIR" -type f \( -name "*.jpg" -o -name "*.gif" -o -name "*.webm" -o -name "*.png" \) | wc -l)
+    completed=$((completed - existing))
     echo "Preloading finished."
+    if [[ "$NOTIFY_PRELOAD" == "true" ]]; then
+        notify_preload_complete "$completed"
+    fi
 }
 
 select_next_wallpaper() {

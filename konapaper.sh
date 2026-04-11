@@ -34,6 +34,8 @@ source "$LIB_DIR/favorites.sh"
 source "$LIB_DIR/init.sh"
 # shellcheck source=lib/cli.sh
 source "$LIB_DIR/cli.sh"
+# shellcheck source=lib/notifications.sh
+source "$LIB_DIR/notifications.sh"
 
 # --- Bootstrap ---
 # Load config before parsing CLI args
@@ -124,6 +126,7 @@ fi
 exec 9>"$LOCKFILE"
 if ! flock -n 9; then
     echo "Another instance is already running. Exiting."
+    notify_error "Already Running" "Another Konapaper instance is running"
     exit 1
 fi
 
@@ -136,7 +139,9 @@ fi
 
 # --- Favorites Modes ---
 if $FAV_MODE; then
-    save_to_favorites
+    if save_to_favorites; then
+        notify_favorite_saved "$(basename "$(get_current_wallpaper)")"
+    fi
     flock -u 9
     exit 0
 fi
@@ -179,23 +184,31 @@ if $LIST_POOLS; then
 fi
 
 log_write "INFO" "Starting wallpaper selection process"
+notify_progress_start "Querying API" "Tags: ${TAGS:-none} | Rating: $RATING | Order: $ORDER"
+
 next_wall=$(select_next_wallpaper)
 if [ -n "$next_wall" ]; then
     log_write "INFO" "Using cached wallpaper: $next_wall"
+    notify_progress_update "Setting wallpaper" "$(basename "$next_wall")"
     set_wallpaper "$next_wall"
+    notify_complete "Cached wallpaper applied: $(basename "$next_wall")"
 else
     log_write "INFO" "No cached wallpapers found, downloading new one"
     echo "No cached wallpapers found; downloading..."
-    
+    notify_progress_update "Downloading" "Fetching wallpaper from Konachan..."
+
     temp_wallpaper="$CACHE_DIR/current.tmp"
     if download_wallpaper "$temp_wallpaper"; then
         ext=$(get_extension_from_url "$(cat "$CACHE_DIR/.last_url" 2>/dev/null)")
         final_wallpaper="$CACHE_DIR/current.$ext"
         [[ -f "${temp_wallpaper}.${ext}" ]] && mv "${temp_wallpaper}.${ext}" "$final_wallpaper"
+        notify_progress_update "Setting wallpaper" "$(basename "$final_wallpaper")"
         set_wallpaper "$final_wallpaper"
+        notify_complete "Wallpaper applied: $(basename "$final_wallpaper")"
     else
         log_error "Failed to download wallpaper"
         echo "Failed to fetch wallpaper."
+        notify_error "Download Failed" "Could not fetch a suitable wallpaper"
         flock -u 9
         exit 1
     fi

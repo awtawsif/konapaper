@@ -47,6 +47,11 @@ LOG_FILE="$HOME/.config/konapaper/konapaper.log"
 LOG_LEVEL="detailed"
 LOG_ROTATION=true
 
+# --- Notification Variables ---
+ENABLE_NOTIFICATIONS=false
+NOTIFY_TIMEOUT=5000
+NOTIFY_PRELOAD=false
+
 # --- ANSI Color Constants ---
 if [[ -t 1 ]] || [[ -w /dev/tty ]]; then
     C_RESET=$'\033[0m'
