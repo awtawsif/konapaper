@@ -1,6 +1,6 @@
 # Konapaper
 
-A powerful and flexible wallpaper rotator script for both Wayland and X11 display servers, designed to fetch high-quality wallpapers from Moebooru-based sites like Konachan.net. It supports multiple wallpaper tools (awww, swaybg, hyprpaper, feh, nitrogen, etc.) with automatic detection and advanced filtering, preloading, and caching features.
+A powerful and flexible wallpaper rotator for **Linux (Wayland/X11)** and **Windows**, designed to fetch high-quality wallpapers from Moebooru-based sites like Konachan.net. On Linux, it supports multiple wallpaper tools (awww, swaybg, hyprpaper, feh, nitrogen, etc.) with automatic detection. On Windows, it uses native PowerShell and the Windows API for a seamless experience.
 
 ## Features
 
@@ -12,23 +12,30 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
 - **Pool Support**: Download from curated collections of images
 - **Size Limits**: Filter wallpapers by minimum and maximum file size to optimize performance
 - **Logging System**: Comprehensive logging with configurable levels and automatic rotation for debugging and monitoring
-- **Cross-Platform Support**: Works with both Wayland (Hyprland, Sway, etc.) and X11 display servers
-- **Multi-Tool Support**: Compatible with awww, swaybg, hyprpaper, feh, nitrogen, fbsetbg, xwallpaper
-- **Auto-Detection**: Automatically detects display server and available wallpaper tools
-- **Custom Commands**: Users can configure custom wallpaper setting commands
+- **Cross-Platform Support**: Works with both Wayland (Hyprland, Sway, etc.) and X11 display servers on Linux, and natively on Windows
+- **Multi-Tool Support (Linux)**: Compatible with awww, swaybg, hyprpaper, feh, nitrogen, fbsetbg, xwallpaper
+- **Native Windows Support**: No WSL or third-party tools required — uses PowerShell and Windows API
+- **Auto-Detection (Linux)**: Automatically detects display server and available wallpaper tools
+- **Custom Commands (Linux)**: Users can configure custom wallpaper setting commands
 - **Configurable**: Extensive configuration options via config file or command-line arguments
 - **Favorites System**: Save wallpapers you love to a dedicated folder and rotate from your favorites collection
-- **Animated Wallpaper Support**: Download and set animated wallpapers (GIF, WebM) with configurable format preferences
-- **Interactive Initialization**: Guided setup with color prompts for easy first-time configuration
+- **Animated Wallpaper Support (Linux)**: Download and set animated wallpapers (GIF, WebM) with configurable format preferences
+- **Interactive Initialization (Linux)**: Guided setup with color prompts for easy first-time configuration
 
 ## Prerequisites
 
-### Required Tools
+### Linux Prerequisites
 - **curl**: For API requests and downloads
 - **jq**: For JSON parsing
 - **xmllint**: For XML parsing (part of libxml2-utils)
 - **bash**: Shell environment
 - **flock**: For process locking (usually available)
+
+### Windows Prerequisites
+- **PowerShell 5.1+**: Built into Windows 10/11 (no installation required)
+- **Internet connection**: For API access and wallpaper downloads
+
+No additional tools are required on Windows — the script uses native PowerShell cmdlets and the Windows API.
 
 ### Wallpaper Tools (One or more required)
 #### Wayland Support
@@ -73,14 +80,319 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
 
 5. Ensure `awww` daemon is running (the script will start it automatically if needed)
 
+## Windows Tutorial
+
+This guide walks you through setting up Konapaper on Windows from scratch — no prior experience with PowerShell or command-line tools required.
+
+### Step 1: Download Konapaper
+
+1. Go to the [GitHub Releases page](https://github.com/awtawsif/konapaper/releases) of this repository.
+2. Find the latest release with Windows support (look for the tag containing `windows`).
+3. Download the **Windows zip file** (`konapaper-windows-vX.X.zip`) from the Assets section.
+4. Extract the zip file to a folder of your choice, for example:
+   ```
+   C:\Users\YourName\konapaper\
+   ```
+
+   The extracted folder should contain these files:
+   - `konapaper.ps1` — The main PowerShell script
+   - `konapaper.bat` — The double-click launcher
+   - `konapaper.psd1` — The configuration file
+   - `README.md` — This documentation
+
+### Step 2: Run for the First Time
+
+1. Open the folder where you extracted Konapaper.
+2. **Double-click `konapaper.bat`**.
+3. A black window (Command Prompt) will appear briefly and then disappear — this is normal. The script runs, downloads a wallpaper, sets it, and exits.
+4. Check your desktop — your wallpaper should have changed!
+
+> **Note:** The first run may take a few seconds as it creates cache folders and downloads the wallpaper. Subsequent runs will be faster thanks to preloaded wallpapers.
+
+### Step 3: Customize Your Preferences
+
+To control what kind of wallpapers you get, edit the configuration file:
+
+1. Right-click `konapaper.psd1` and select **Open with → Notepad** (or any text editor).
+2. Change the values to your liking. Here's a recommended starter config:
+
+   ```powershell
+   @{
+       # Search for scenic wallpapers
+       TAGS = "landscape scenic sky"
+
+       # Safe content only
+       RATING = "s"
+
+       # Only Full HD and above
+       MIN_WIDTH = 1920
+       MIN_HEIGHT = 1080
+
+       # Max file size to avoid slow downloads
+       MAX_FILE_SIZE = "5MB"
+
+       # Preload more wallpapers for variety
+       PRELOAD_COUNT = 5
+       MAX_PRELOAD_CACHE = 15
+
+       # Enable logging for troubleshooting
+       ENABLE_LOGGING = $true
+       LOG_LEVEL = "detailed"
+   }
+   ```
+
+3. Press **Ctrl+S** to save.
+4. Run `konapaper.bat` again to apply your new settings.
+
+### Step 4: Use Tags to Find Wallpapers You Like
+
+Konapaper searches the Konachan image board. You can combine multiple tags to narrow down results. Some popular tag combinations:
+
+| What You Want | Tags to Use |
+|---|---|
+| Nature scenery | `landscape scenic` |
+| Night cityscapes | `cityscape night` |
+| Fantasy art | `fantasy original` |
+| Ocean/beach | `ocean beach water` |
+| Mountains | `mountain snow sky` |
+| Space/galaxy | `space galaxy stars` |
+| Anime style | `anime original` |
+| Minimalist | `minimalist simple` |
+
+To use tags, edit `konapaper.psd1` and change the `TAGS` line:
+```powershell
+TAGS = "mountain snow sky"
+```
+
+Or run from Command Prompt with specific tags:
+```cmd
+konapaper.bat --tags "mountain snow sky"
+```
+
+### Step 5: Set Up Automatic Wallpaper Changes
+
+Instead of manually running the script, let Windows do it for you:
+
+1. Press **Windows key** and type **Task Scheduler**, then open it.
+2. In the right panel, click **Create Basic Task...**
+3. Give it a name like `Konapaper Wallpaper` and click **Next**.
+4. Choose how often you want wallpapers to change:
+   - **Daily** — changes once per day
+   - **Hourly** — changes every hour
+   - Choose your preference and click **Next**.
+5. Set the start time (e.g., 9:00 AM) and click **Next**.
+6. Select **Start a program** and click **Next**.
+7. Click **Browse...** and navigate to your `konapaper.bat` file. Select it.
+   - Alternatively, paste the full path, e.g.: `C:\Users\YourName\konapaper\konapaper.bat`
+8. Click **Next**, then **Finish**.
+
+That's it! Your wallpaper will now change automatically on schedule. You can close Task Scheduler.
+
+### Step 6: Save Wallpapers You Love
+
+If you find a wallpaper you really like, save it to your favorites:
+
+1. After running Konapaper, open **Command Prompt** or **PowerShell**.
+2. Navigate to your Konapaper folder:
+   ```cmd
+   cd C:\Users\YourName\konapaper
+   ```
+3. Run:
+   ```cmd
+   konapaper.bat --fav
+   ```
+4. The current wallpaper is copied to your `Pictures\Wallpapers` folder.
+
+To browse your saved favorites:
+```cmd
+konapaper.bat --list-favs
+```
+
+To set a random wallpaper from your favorites collection:
+```cmd
+konapaper.bat --from-favs
+```
+
+### Step 7: Troubleshooting
+
+**Nothing happens when I double-click `konapaper.bat`:**
+- Right-click the file and select **Edit** to open it in Notepad. Make sure the path to `konapaper.ps1` is correct.
+- Try running from Command Prompt: `konapaper.bat --help`. If you see the help menu, the script is working.
+
+**I get an "Execution Policy" error:**
+- Open PowerShell as Administrator and run:
+  ```powershell
+  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+  ```
+- Or always run with bypass: `powershell -ExecutionPolicy Bypass -File konapaper.ps1`
+
+**My wallpaper isn't changing:**
+- Some apps like **Wallpaper Engine** or **Lively Wallpaper** override the Windows wallpaper setting. Close them first.
+- Check the log file at `%APPDATA%\konapaper\konapaper.log` for error messages.
+
+**The downloaded wallpaper is the wrong resolution:**
+- Set `MIN_WIDTH` and `MIN_HEIGHT` in `konapaper.psd1` to match your monitor's resolution.
+- Use `--aspect-ratio 16:9` (or your monitor's ratio) to filter by proportions.
+
+## Windows Support
+
+### Installation
+
+1. Clone or download the repository:
+   ```powershell
+   git clone https://github.com/awtawsif/konapaper.git
+   cd konapaper
+   ```
+
+2. No additional setup required — PowerShell is built into Windows 10/11.
+
+3. (Optional) Edit `konapaper.psd1` to customize default settings:
+   ```powershell
+   notepad konapaper.psd1
+   ```
+
+### Usage
+
+#### Double-Click Launcher
+Simply double-click `konapaper.bat` to fetch and set a random wallpaper. The script will:
+- Query the Konachan API for a random wallpaper
+- Download it to your local cache (`%LOCALAPPDATA%\konapaper`)
+- Set it as your desktop wallpaper
+- Preload additional wallpapers in the background for faster subsequent runs
+
+#### Command-Line Usage
+Open PowerShell or Command Prompt and run:
+```powershell
+# Using the batch launcher
+konapaper.bat --tags "landscape sky" --rating "s"
+
+# Or directly with PowerShell
+powershell -ExecutionPolicy Bypass -File .\konapaper.ps1 --tags "landscape sky"
+```
+
+#### Command-Line Options (Windows)
+Most Linux options work identically on Windows:
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--tags` | `-t` | Space-separated tags | None |
+| `--limit` | `-l` | Number of posts to query | 50 |
+| `--page` | `-p` | Page number, 'random', or 'MIN-MAX' range | 1 |
+| `--rating` | `-r` | Rating: s/q/e | s |
+| `--order` | `-o` | Order: random/score/date | random |
+| `--max-file-size` | `-s` | Max file size (e.g., 500KB, 2MB; 0 to disable) | 2MB |
+| `--min-file-size` | `-z` | Min file size (e.g., 100KB, 1MB; 0 to disable) | disabled |
+| `--min-width` | | Minimum width in pixels (e.g., 1920) | disabled |
+| `--max-width` | | Maximum width in pixels (e.g., 3840) | disabled |
+| `--min-height` | | Minimum height in pixels (e.g., 1080) | disabled |
+| `--max-height` | | Maximum height in pixels (e.g., 2160) | disabled |
+| `--aspect-ratio` | | Aspect ratio (e.g., 16:9, 21:9, 4:3) | disabled |
+| `--min-score` | `-m` | Minimum score | None |
+| `--artist` | `-a` | Filter by artist | None |
+| `--pool` | `-P` | Pool ID | None |
+| `--dry-run` | `-d` | Show results without downloading | false |
+| `--discover-tags` | `-D` | Discover popular tags | false |
+| `--discover-artists` | `-A` | Discover artists | false |
+| `--list-pools` | `-L` | List available pools | false |
+| `--search-pools` | `-S` | Search pools by name | None |
+| `--random-tags` | `-R` | Number of random tags to select from config list | 0 |
+| `--clean-cache` | `-cc` | Clean preload cache | false |
+| `--clean-force` | `-cf` | Clean without confirmation | false |
+| `--fav` | | Save current wallpaper to favorites | false |
+| `--list-favs` | | List saved favorites | false |
+| `--from-favs` | | Set random wallpaper from favorites | false |
+| `--help` | `-h` | Show help | |
+
+#### Examples
+```powershell
+# Set a random wallpaper with default settings
+konapaper.bat
+
+# Search for specific tags
+konapaper.bat --tags "landscape sky"
+
+# Use questionable rating with score filter
+konapaper.bat --rating "q" --min-score 20
+
+# Download from a specific pool
+konapaper.bat --pool 1234
+
+# Resolution filtering
+konapaper.bat --min-width 1920 --min-height 1080 --aspect-ratio 16:9
+
+# Preview without downloading
+konapaper.bat --dry-run --tags "touhou" --limit 10
+
+# Save current wallpaper to favorites
+konapaper.bat --fav
+
+# Set random wallpaper from favorites
+konapaper.bat --from-favs
+
+# Discover popular tags
+konapaper.bat --discover-tags
+```
+
+#### Automation with Task Scheduler
+
+Set up automatic wallpaper changes on a schedule:
+
+1. Open **Task Scheduler** (search for it in the Start menu)
+2. Click **Create Basic Task**
+3. Set a trigger (e.g., Daily, or every 6 hours)
+4. For the action, select **Start a program**
+5. Browse to `konapaper.bat` or enter its full path
+6. Finish the wizard
+
+The wallpaper will now change automatically at your chosen interval — no user interaction needed.
+
+#### Configuration (Windows)
+
+Edit `konapaper.psd1` to customize default behavior:
+
+```powershell
+# Open the config file
+notepad konapaper.psd1
+
+# Edit values, for example:
+@{
+    TAGS = "landscape scenic"
+    LIMIT = 100
+    RATING = "s"
+    MAX_FILE_SIZE = "5MB"
+    MIN_WIDTH = 1920
+    MIN_HEIGHT = 1080
+    PREFERRED_FORMAT = "jpg"
+    PRELOAD_COUNT = 5
+    FAVORITES_DIR = "C:\Users\YourName\Pictures\Wallpapers"
+    ENABLE_LOGGING = $true
+}
+```
+
+The config file is searched for in this order:
+1. `%APPDATA%\konapaper\konapaper.psd1` (user config directory)
+2. The script's directory
+3. The current working directory
+
+### Windows Limitations
+
+The following features are **not available** on Windows in the current version:
+
+- **Animated Wallpapers**: Windows `SystemParametersInfo` API only supports static images. For animated wallpapers, consider third-party tools like Lively Wallpaper or Wallpaper Engine.
+- **Notifications**: Desktop notifications require the third-party BurntToast PowerShell module.
+- **Interactive Init Wizard**: The guided setup with color prompts is Linux-only.
+
+These features may be added in future releases.
+
 ## Project Structure
 
-Konapaper uses a modular architecture. The main script (`konapaper.sh`) acts as a thin orchestrator that sources focused modules from the `lib/` directory:
+Konapaper uses a modular architecture. The Linux version (`konapaper.sh`) acts as a thin orchestrator that sources focused modules from the `lib/` directory. The Windows version (`konapaper.ps1`) is a self-contained PowerShell script with all logic built-in.
 
+### Linux Structure
 ```
 konapaper/
-├── konapaper.sh              # Main entry point (orchestrator)
-├── konapaper.conf            # Default configuration file
+├── konapaper.sh              # Main entry point (Linux orchestrator)
+├── konapaper.conf            # Default configuration file (Linux)
 ├── lib/
 │   ├── constants.sh          # Global variables, defaults, ANSI colors
 │   ├── config.sh             # Config file loading, random tag processing
@@ -99,7 +411,16 @@ konapaper/
 └── README.md
 ```
 
-Each module is self-contained and responsible for a single area of functionality. All modules share global variables defined in `constants.sh` and set by `cli.sh` via the standard bash `source` mechanism.
+### Windows Structure
+```
+konapaper/
+├── konapaper.ps1             # Main PowerShell script (Windows)
+├── konapaper.bat             # Double-click launcher (Windows)
+├── konapaper.psd1            # PowerShell config data file (Windows)
+└── README.md
+```
+
+Each Linux module is self-contained and responsible for a single area of functionality. All modules share global variables defined in `constants.sh` and set by `cli.sh` via the standard bash `source` mechanism.
 
 ## Configuration
 
@@ -414,28 +735,93 @@ The `--init-interactive` command provides a guided wizard with:
 - Guided configuration of options
 - Non-interactive mode with auto-detection using `--init`
 
+## Windows-Specific Usage Notes
+
+### Dry Run Mode (Windows)
+```powershell
+konapaper.bat --dry-run --tags "touhou" --limit 10
+```
+Displays a table of matching posts with ID, score, author, dimensions, size, and tags.
+
+### Cache Management (Windows)
+```powershell
+# Clean preload cache (keeps current wallpaper)
+konapaper.bat --clean-cache
+
+# Force clean without confirmation
+konapaper.bat --clean-force
+```
+The preload cache is stored in `%LOCALAPPDATA%\konapaper\preload_<rating>\` and is limited to `MAX_PRELOAD_CACHE` wallpapers.
+
+### Favorites (Windows)
+```powershell
+# Save current wallpaper to favorites
+konapaper.bat --fav
+
+# List all saved favorites
+konapaper.bat --list-favs
+
+# Set a random wallpaper from favorites
+konapaper.bat --from-favs
+```
+The favorites directory defaults to `Pictures\Wallpapers`. You can customize this in `konapaper.psd1`:
+```powershell
+FAVORITES_DIR = "C:\Users\YourName\Pictures\Wallpapers"
+```
+
+### Logging (Windows)
+Enable logging in `konapaper.psd1`:
+```powershell
+ENABLE_LOGGING = $true
+LOG_LEVEL = "verbose"  # basic, detailed, or verbose
+LOG_FILE = "C:\path\to\konapaper.log"
+LOG_ROTATION = $true
+```
+Log files are stored in `%APPDATA%\konapaper\` by default and include session timestamps, API calls, file operations, and errors.
+
+### Notifications (Windows)
+Desktop notifications are **not available** in the current Windows version. This feature requires the third-party BurntToast PowerShell module and may be added in a future release.
+
 ## Examples
 
 ### Daily Wallpaper Rotation
 
-Set up a cron job or systemd timer to change wallpapers periodically:
-
+**Linux (Cron Job):**
 ```bash
 # Every hour, random landscape wallpaper
 0 * * * * /path/to/konapaper.sh --tags "landscape scenic" --rating "s"
 ```
 
+**Windows (Task Scheduler):**
+Set up via Task Scheduler to run `konapaper.bat --tags "landscape scenic" --rating "s"` on a schedule (see Automation section above).
+
 ### Themed Collections
 
+**Linux:**
 ```bash
 # Anime-style landscapes
 ./konapaper.sh --tags "landscape anime" --rating "s" --min-score 15
+```
 
-# High-quality artwork
+**Windows:**
+```powershell
+konapaper.bat --tags "landscape anime" --rating "s" --min-score 15
+```
+
+```bash
+# High-quality artwork (Linux)
 ./konapaper.sh --tags "original" --rating "s" --min-score 50 --min-file-size "500KB" --max-file-size "5MB"
 
-# Artist-specific wallpapers
+# Artist-specific wallpapers (Linux)
 ./konapaper.sh --artist "k-eke" --rating "s"
+```
+
+```powershell
+# High-quality artwork (Windows)
+konapaper.bat --tags "original" --rating "s" --min-score 50 --min-file-size "500KB" --max-file-size "5MB"
+
+# Artist-specific wallpapers (Windows)
+konapaper.bat --artist "k-eke" --rating "s"
 ```
 
 ### Resolution Filtering
@@ -564,7 +950,7 @@ Follow these guidelines for contributions:
 
 ## Troubleshooting
 
-### Common Issues
+### Common Issues (Linux)
 
 1. **"No suitable wallpaper tool found"**: Install a supported wallpaper tool for your display server (awww/swaybg/hyprpaper for Wayland, feh/nitrogen/fbsetbg/xwallpaper for X11).
 
@@ -584,10 +970,21 @@ Follow these guidelines for contributions:
 
 9. **Partial/corrupted wallpaper**: If wallpapers appear incomplete or filled with random colors when running the script quickly multiple times, this is prevented by atomic download handling. Downloads use a temporary file (`.tmp`) that is only renamed to the final file after completion, ensuring incomplete downloads are never used.
 
+### Common Issues (Windows)
+
+1. **"Another instance is already running"**: The script uses a mutex to prevent concurrent runs. Wait for the current run to finish or restart your computer if it's stuck.
+
+2. **"Execution Policy" errors**: Run the script with `-ExecutionPolicy Bypass` flag or run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` in an elevated PowerShell prompt.
+
+3. **"Invoke-RestMethod" errors**: Check your internet connection. Windows firewall or antivirus may be blocking PowerShell from accessing the internet.
+
+4. **Permission errors**: Ensure `%LOCALAPPDATA%\konapaper` is writable. Run as Administrator if needed.
+
+5. **Wallpaper not changing**: Some third-party wallpaper apps (Wallpaper Engine, Lively) may override the Windows wallpaper setting. Close them first or use their built-in wallpaper switching.
+
 ### Debug Mode
 
-For debugging, run with verbose output, enable logging, or check the API responses manually:
-
+**Linux:**
 ```bash
 # Check API response
 curl "https://konachan.net/post.json?limit=1&tags=rating:s"
@@ -603,6 +1000,25 @@ tail -f ~/.config/konapaper/konapaper.log
 
 # Clean up stale download files if needed
 find ~/.cache/konapaper -name "*.tmp" -delete
+```
+
+**Windows:**
+```powershell
+# Check API response
+Invoke-RestMethod -Uri "https://konachan.net/post.json?limit=1&tags=rating:s"
+
+# Enable verbose logging (edit konapaper.psd1)
+ENABLE_LOGGING = $true
+LOG_LEVEL = "verbose"
+
+# Check recent log entries
+Get-Content "$env:APPDATA\konapaper\konapaper.log" -Tail 50
+
+# Test favorites functionality
+konapaper.bat --list-favs
+
+# Clean up stale download files if needed
+Remove-Item "$env:LOCALAPPDATA\konapaper\*.tmp" -Force -ErrorAction SilentlyContinue
 ```
 
 ## Contributing
