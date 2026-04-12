@@ -18,7 +18,8 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
 - **Custom Commands**: Users can configure custom wallpaper setting commands
 - **Configurable**: Extensive configuration options via config file or command-line arguments
 - **Favorites System**: Save wallpapers you love to a dedicated folder and rotate from your favorites collection
-- **Animated Wallpaper Support**: Download and set animated wallpapers (GIF, WebM) with configurable format preferences
+- **Animated Wallpaper Support**: Download and set animated wallpapers (GIF, WebM) with proper frame clearing and retry logic
+- **Duplicate Prevention**: Tracks downloaded post IDs to avoid re-downloading the same wallpaper
 - **Interactive Initialization**: Guided setup with color prompts for easy first-time configuration
 
 ## Prerequisites
@@ -71,7 +72,7 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
    ```
    This provides an interactive wizard that auto-detects your display server and wallpaper tools, then guides you through configuration.
 
-5. Ensure `awww` daemon is running (the script will start it automatically if needed)
+5. The `awww` daemon will be auto-started if not already running
 
 ## Project Structure
 
@@ -587,6 +588,10 @@ Follow these guidelines for contributions:
 8. **Intermittent issues**: Enable logging to track execution details and identify patterns: `ENABLE_LOGGING="true"` in config.
 
 9. **Partial/corrupted wallpaper**: If wallpapers appear incomplete or filled with random colors when running the script quickly multiple times, this is prevented by atomic download handling. Downloads use a temporary file (`.tmp`) that is only renamed to the final file after completion, ensuring incomplete downloads are never used.
+
+10. **GIF artifacts or double animations**: Ensure `awww-daemon` is running. The script will auto-start it if needed. For GIF glitches, the script now uses `clear-cache` instead of `clear` to properly flush cached animation frames.
+
+11. **Duplicate wallpapers**: The script now tracks downloaded post IDs in `~/.config/konapaper/downloaded_ids` to avoid re-downloading the same wallpaper. This file persists forever.
 
 ### Debug Mode
 
