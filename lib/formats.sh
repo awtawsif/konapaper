@@ -11,7 +11,6 @@ detect_animated_support() {
     case "$tool" in
         awww)    animated_formats="gif" ;;
         mpvpaper) animated_formats="gif,webm,mp4" ;;
-        swww)    animated_formats="gif" ;;
         swaybg)  animated_formats="" ;;
         hyprpaper) animated_formats="" ;;
         feh)     animated_formats="" ;;

@@ -1,10 +1,13 @@
 #!/bin/bash
 # =================================================================
 # KONAPAPER — Constants & Default Variables
-# Global variables, default parameters, and ANSI color definitions
+# Global variables, default values, and ANSI color definitions
 # =================================================================
 
-BASE_URL="https://konachan.net"
+VERSION="1.3.0"
+
+# API base URL (can be overridden via config file for other Moebooru instances)
+BASE_URL="${BASE_URL:-https://konachan.net}"
 POST_ENDPOINT="/post.json"
 
 # --- Default Parameters ---

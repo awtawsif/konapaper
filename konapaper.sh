@@ -41,6 +41,22 @@ source "$LIB_DIR/notifications.sh"
 # Load config before parsing CLI args
 load_config
 
+# Check required dependencies
+check_dependencies() {
+    local missing=()
+    for cmd in curl jq xmllint flock; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            missing+=("$cmd")
+        fi
+    done
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo "Error: missing required dependencies: ${missing[*]}" >&2
+        echo "Please install them before running Konapaper." >&2
+        exit 1
+    fi
+}
+check_dependencies
+
 # Set defaults for format options
 PREFERRED_FORMAT="${PREFERRED_FORMAT:-auto}"
 ANIMATED_ONLY="${ANIMATED_ONLY:-false}"
@@ -77,14 +93,14 @@ if ! $INIT_MODE; then
     [[ -n "$MIN_SCORE" ]] && echo "  Min score: $MIN_SCORE"
     [[ -n "$ARTIST" ]] && echo "  Artist: $ARTIST"
     [[ -n "$POOL_ID" ]] && echo "  Pool ID: $POOL_ID"
-     $DRY_RUN && echo "  Dry run: enabled"
-     $DISCOVER_TAGS && echo "  Tag discovery: enabled"
-     $DISCOVER_ARTISTS && echo "  Artist discovery: enabled"
-     $LIST_POOLS && echo "  Pool listing: enabled"
+     [[ "$DRY_RUN" == true ]] && echo "  Dry run: enabled"
+     [[ "$DISCOVER_TAGS" == true ]] && echo "  Tag discovery: enabled"
+     [[ "$DISCOVER_ARTISTS" == true ]] && echo "  Artist discovery: enabled"
+     [[ "$LIST_POOLS" == true ]] && echo "  Pool listing: enabled"
       [[ -n "$SEARCH_POOLS" ]] && echo "  Pool search: $SEARCH_POOLS"
       [[ "$RANDOM_TAGS_COUNT" -gt 0 ]] && echo "  Random tags count: $RANDOM_TAGS_COUNT"
-      $CLEAN_MODE && echo "  Clean mode: enabled"
-      $FORCE_CLEAN && echo "  Force clean: enabled"
+      [[ "$CLEAN_MODE" == true ]] && echo "  Clean mode: enabled"
+      [[ "$FORCE_CLEAN" == true ]] && echo "  Force clean: enabled"
 fi
 
 # --- Convert sizes and dimensions ---
@@ -125,7 +141,7 @@ fi
 # --- Lock Handling ---
 exec 9>"$LOCKFILE"
 if ! flock -n 9; then
-    echo "Another instance is already running. Exiting."
+    echo "Error: another instance is already running. Exiting." >&2
     notify_error "Already Running" "Another Konapaper instance is running"
     exit 1
 fi
@@ -194,20 +210,21 @@ if [ -n "$next_wall" ]; then
     notify_complete "Cached wallpaper applied: $(basename "$next_wall")"
 else
     log_write "INFO" "No cached wallpapers found, downloading new one"
-    echo "No cached wallpapers found; downloading..."
+    echo "No cached wallpapers found; downloading..." >&2
     notify_progress_update "Downloading" "Fetching wallpaper from Konachan..."
 
     temp_wallpaper="$CACHE_DIR/current.tmp"
     if download_wallpaper "$temp_wallpaper"; then
-        ext=$(get_extension_from_url "$(cat "$CACHE_DIR/.last_url" 2>/dev/null)")
+        ext=$(get_extension_from_url "$(cat "${temp_wallpaper}.url" 2>/dev/null)")
         final_wallpaper="$CACHE_DIR/current.$ext"
         [[ -f "${temp_wallpaper}.${ext}" ]] && mv "${temp_wallpaper}.${ext}" "$final_wallpaper"
+        rm -f "${temp_wallpaper}.url"
         notify_progress_update "Setting wallpaper" "$(basename "$final_wallpaper")"
         set_wallpaper "$final_wallpaper"
         notify_complete "Wallpaper applied: $(basename "$final_wallpaper")"
     else
         log_error "Failed to download wallpaper"
-        echo "Failed to fetch wallpaper."
+        echo "Error: failed to fetch wallpaper." >&2
         notify_error "Download Failed" "Could not fetch a suitable wallpaper"
         flock -u 9
         exit 1

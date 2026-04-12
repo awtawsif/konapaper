@@ -18,9 +18,9 @@ log_init() {
         local log_size
         log_size=$(stat -c%s "$LOG_FILE" 2>/dev/null || echo 0)
         local max_size=10485760  # 10MB
-        
+
         if (( log_size > max_size )); then
-            for (( i=4; i>=1; i-- )); do
+            for (( i=5; i>=1; i-- )); do
                 if [[ -f "${LOG_FILE}.${i}" ]]; then
                     mv "${LOG_FILE}.${i}" "${LOG_FILE}.$((i+1))"
                 fi

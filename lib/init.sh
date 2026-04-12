@@ -5,18 +5,6 @@
 # =================================================================
 
 # --- Interactive Init Helper Functions ---
-is_interactive() {
-    if $INIT_INTERACTIVE; then
-        return 0
-    fi
-    if test -t 0; then
-        return 0
-    fi
-    if test -t 1; then
-        return 0
-    fi
-    return 1
-}
 
 print_section_header() {
     local title="$1"
@@ -150,7 +138,7 @@ run_init_mode() {
 
     mkdir -p "$HOME/.config/konapaper"
 
-    if $INIT_INTERACTIVE || is_interactive; then
+    if $INIT_INTERACTIVE; then
         echo ""
         echo "  ${C_DIM}Interactive mode detected. You'll be prompted for each setting.${C_RESET}"
         echo "  ${C_DIM}Press ${C_BOLD_WHITE}Enter${C_RESET}${C_DIM} to accept the default value shown in ${C_CYAN}[brackets]${C_RESET}${C_DIM}.${C_RESET}"

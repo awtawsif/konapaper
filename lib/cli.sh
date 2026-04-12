@@ -51,11 +51,12 @@ display_help() {
     echo ""
 
     echo "  ${C_BOLD_BLUE}⚙  System & Maintenance${C_RESET}"
-    echo "    ${C_BOLD_WHITE}-I, --init${C_RESET}             Run initialization wizard"
-    echo "    ${C_BOLD_WHITE}-ii, --init-interactive${C_RESET} Force interactive init mode"
+    echo "    ${C_BOLD_WHITE}-I, --init${C_RESET}             Auto-detect environment, write default config"
+    echo "    ${C_BOLD_WHITE}-ii, --init-interactive${C_RESET} Guided setup with interactive prompts"
     echo "    ${C_BOLD_WHITE}-cc, --clean-cache${C_RESET}      Clean preload folders"
     echo "    ${C_BOLD_WHITE}-cf, --clean-force${C_RESET}      Force clean without confirmation"
     echo "    ${C_BOLD_WHITE}-d, --dry-run${C_RESET}           Show results without downloading"
+    echo "    ${C_BOLD_WHITE}-v, --version${C_RESET}           Show version"
     echo "    ${C_BOLD_WHITE}-h, --help${C_RESET}              Show this beautiful help menu"
     echo ""
 }
@@ -63,27 +64,85 @@ display_help() {
 parse_cli_args() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-            -t|--tags) TAGS="$2"; shift ;;
-            -l|--limit) LIMIT="$2"; shift ;;
+            -t|--tags)
+                if [[ -z "$2" ]]; then
+                    echo "Error: --tags requires a value" >&2
+                    exit 1
+                fi
+                TAGS="$2"; shift ;;
+            -l|--limit)
+                if ! [[ "$2" =~ ^[0-9]+$ ]] || [[ "$2" -le 0 ]]; then
+                    echo "Error: --limit must be a positive integer, got '$2'" >&2
+                    exit 1
+                fi
+                LIMIT="$2"; shift ;;
             -p|--page)
-                PAGE=$(parse_page_argument "$2")
                 if ! PAGE=$(parse_page_argument "$2"); then
                     exit 1
                 fi
                 shift ;;
-            -r|--rating) RATING="$2"; shift ;;
-            -o|--order) ORDER="$2"; shift ;;
-             -s|--max-file-size) MAX_FILE_SIZE="$2"; shift ;;
-             -z|--min-file-size) MIN_FILE_SIZE="$2"; shift ;;
-             --min-width) MIN_WIDTH="$2"; shift ;;
-             --max-width) MAX_WIDTH="$2"; shift ;;
-             --min-height) MIN_HEIGHT="$2"; shift ;;
-             --max-height) MAX_HEIGHT="$2"; shift ;;
-             --aspect-ratio) ASPECT_RATIO="$2"; shift ;;
-             -m|--min-score) MIN_SCORE="$2"; shift ;;
-             -a|--artist) ARTIST="$2"; shift ;;
-            -P|--pool) POOL_ID="$2"; shift ;;
-            -f|--format) PREFERRED_FORMAT="$2"; shift ;;
+            -r|--rating)
+                if [[ ! "$2" =~ ^[sSqQeE]$ ]]; then
+                    echo "Error: --rating must be 's', 'q', or 'e', got '$2'" >&2
+                    exit 1
+                fi
+                RATING="${2,,}"; shift ;;
+            -o|--order)
+                if [[ ! "$2" =~ ^(random|score|date)$ ]]; then
+                    echo "Error: --order must be 'random', 'score', or 'date', got '$2'" >&2
+                    exit 1
+                fi
+                ORDER="$2"; shift ;;
+             -s|--max-file-size)
+                MAX_FILE_SIZE="$2"; shift ;;
+             -z|--min-file-size)
+                MIN_FILE_SIZE="$2"; shift ;;
+             --min-width)
+                if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+                    echo "Error: --min-width must be a number, got '$2'" >&2
+                    exit 1
+                fi
+                MIN_WIDTH="$2"; shift ;;
+             --max-width)
+                if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+                    echo "Error: --max-width must be a number, got '$2'" >&2
+                    exit 1
+                fi
+                MAX_WIDTH="$2"; shift ;;
+             --min-height)
+                if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+                    echo "Error: --min-height must be a number, got '$2'" >&2
+                    exit 1
+                fi
+                MIN_HEIGHT="$2"; shift ;;
+             --max-height)
+                if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+                    echo "Error: --max-height must be a number, got '$2'" >&2
+                    exit 1
+                fi
+                MAX_HEIGHT="$2"; shift ;;
+             --aspect-ratio)
+                ASPECT_RATIO="$2"; shift ;;
+             -m|--min-score)
+                if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+                    echo "Error: --min-score must be a number, got '$2'" >&2
+                    exit 1
+                fi
+                MIN_SCORE="$2"; shift ;;
+             -a|--artist)
+                ARTIST="$2"; shift ;;
+            -P|--pool)
+                if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+                    echo "Error: --pool must be a numeric ID, got '$2'" >&2
+                    exit 1
+                fi
+                POOL_ID="$2"; shift ;;
+            -f|--format)
+                if [[ ! "$2" =~ ^(jpg|jpeg|png|gif|webm)$ ]]; then
+                    echo "Error: --format must be 'jpg', 'gif', or 'webm', got '$2'" >&2
+                    exit 1
+                fi
+                PREFERRED_FORMAT="$2"; shift ;;
             --animated-only) ANIMATED_ONLY=true ;;
             -d|--dry-run) DRY_RUN=true ;;
             -D|--discover-tags) DISCOVER_TAGS=true ;;
@@ -102,7 +161,10 @@ parse_cli_args() {
               -h|--help)
                 display_help
                 exit 0 ;;
-            *) echo "Unknown parameter: $1"; exit 1 ;;
+            -v|--version)
+                echo "Konapaper v${VERSION}"
+                exit 0 ;;
+            *) echo "Unknown parameter: $1" >&2; exit 1 ;;
         esac
         shift
     done

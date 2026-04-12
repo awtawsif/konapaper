@@ -49,11 +49,13 @@ preload_wallpapers() {
     fi
     local completed=0
     for (( i=1; i<=to_preload; i++ )); do
-        local tmpfile="$PRELOAD_DIR/preload_$RANDOM"
+        # Use per-job temp files to avoid race conditions on .last_url
+        local tmpfile="$PRELOAD_DIR/preload_${RANDOM}_job_${i}"
         download_wallpaper "$tmpfile" &
         sleep 0.3
     done
     wait
+
     # Count successfully preloaded
     completed=$(find "$PRELOAD_DIR" -type f \( -name "*.jpg" -o -name "*.gif" -o -name "*.webm" -o -name "*.png" \) | wc -l)
     completed=$((completed - existing))

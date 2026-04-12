@@ -49,6 +49,8 @@ detect_display_server() {
         wayland)
             if command -v awww >/dev/null 2>&1; then
                 wallpaper_tool="awww"
+            elif command -v mpvpaper >/dev/null 2>&1; then
+                wallpaper_tool="mpvpaper"
             elif command -v swaybg >/dev/null 2>&1; then
                 wallpaper_tool="swaybg"
             elif command -v hyprpaper >/dev/null 2>&1; then
@@ -58,6 +60,8 @@ detect_display_server() {
         x11)
             if command -v feh >/dev/null 2>&1; then
                 wallpaper_tool="feh"
+            elif command -v mpvpaper >/dev/null 2>&1; then
+                wallpaper_tool="mpvpaper"
             elif command -v nitrogen >/dev/null 2>&1; then
                 wallpaper_tool="nitrogen"
             elif command -v fbsetbg >/dev/null 2>&1; then
@@ -120,8 +124,8 @@ set_wallpaper() {
         fi
         return $?
     else
-        echo "Error: No command configured for $wallpaper_tool"
-        echo "Please set WALLPAPER_COMMAND in your config file or install a supported tool."
+        echo "Error: no command configured for $wallpaper_tool" >&2
+        echo "Please set WALLPAPER_COMMAND in your config file or install a supported tool." >&2
         log_error "No command configured for $wallpaper_tool"
         notify_error "No Wallpaper Tool" "No command configured for $wallpaper_tool"
         return 1
