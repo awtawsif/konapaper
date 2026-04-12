@@ -6,7 +6,7 @@ A powerful and flexible wallpaper rotator script for both Wayland and X11 displa
 
 - **Advanced Filtering**: Search by tags, ratings (safe/questionable/explicit), minimum score, artist, and pool IDs
 - **Intelligent Caching**: Preloads wallpapers in the background for instant transitions (configurable cache size per rating)
-- **Random Tag Selection**: Configure a list of favorite tags and use `--random-tags` to randomly select combinations (preload cache per rating); export discovered tags to override the list
+- **Random Tag Selection**: Configure a list of favorite tags and use `--random-tags` to randomly select combinations (preload cache per rating)
 - **Discovery Modes**: Explore popular tags, artists, and pools without downloading (configurable limits)
 - **Dry Run Mode**: Preview available wallpapers without downloading
 - **Pool Support**: Download from curated collections of images
@@ -139,8 +139,11 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 
 #### Random Tag Feature
 
-- **`RANDOM_TAGS_LIST`**: Array of tags to randomly select from (e.g., `("landscape" "scenic" "sky" "clouds")`)
-- **CLI Option**: `--random-tags COUNT` - Number of random tags to select (default: 0, disabled)
+- **`RANDOM_TAGS_LIST`**: Tags to randomly select from. Can be:
+  - A bash array: `("landscape" "scenic" "sky" "clouds")` (use parentheses for tag list)
+  - A file path: `"$HOME/.config/konapaper/discovered_tags.txt"` (no parentheses for file path)
+- **`RANDOM_TAGS_COUNT`**: Number of random tags to select (default: 0, disabled)
+- **CLI Option**: `--random-tags COUNT` - Number of random tags to select
 
 #### Cache and Preloading
 
@@ -150,7 +153,6 @@ Konapaper uses a configuration file (`konapaper.conf`) that allows you to set de
 #### Discovery
 
 - **`DISCOVER_LIMIT`**: Number of items to fetch for discovery modes (default: 20)
-- **`EXPORTED_TAGS_FILE`**: Path to file where discovered tags are exported (default: ~/.config/konapaper/discovered_tags.txt)
 
 #### Notification Configuration
 
@@ -483,13 +485,15 @@ Run with:
 
 The script will randomly select 3 tags from the list for each run, ensuring variety. Preload cache is per rating.
 
-Alternatively, discover and export tags:
+To use discovered tags as the random tag list:
 
 ```bash
+# First, discover and export tags to a file
 ./konapaper.sh --discover-tags --export-tags
-```
 
-This saves the top tags to EXPORTED_TAGS_FILE, which overrides RANDOM_TAGS_LIST if the file exists.
+# Then set RANDOM_TAGS_LIST in config to the file path:
+# RANDOM_TAGS_LIST="$HOME/.config/konapaper/discovered_tags.txt"
+```
 
 ### Favorites Management
 

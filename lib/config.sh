@@ -19,10 +19,12 @@ load_config() {
         # shellcheck source=/dev/null
         source "$CONFIG_FILE"
     fi
-    EXPORTED_TAGS_FILE=${EXPORTED_TAGS_FILE:-"$HOME/.config/konapaper/discovered_tags.txt"}
-    if [[ -f "$EXPORTED_TAGS_FILE" ]]; then
-        mapfile -t RANDOM_TAGS_LIST < "$EXPORTED_TAGS_FILE"
+
+    # If RANDOM_TAGS_LIST is a file path (no parentheses) and exists, load tags from it
+    if [[ -n "$RANDOM_TAGS_LIST" && "$RANDOM_TAGS_LIST" != *'('* && -f "$RANDOM_TAGS_LIST" ]]; then
+        mapfile -t RANDOM_TAGS_LIST < "$RANDOM_TAGS_LIST"
     fi
+
     WALLPAPER_COMMAND=${WALLPAPER_COMMAND:-""}
     
     # Load logging configuration

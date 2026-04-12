@@ -234,17 +234,35 @@ run_init_mode() {
         enable_random_tags="$input"
 
         if [[ "$enable_random_tags" == "true" ]]; then
-            input=$(prompt_with_default "Random Tags Count" "3" "5")
-            random_tags_count="$input"
+            input=$(prompt_yes_no "Discover and Export Tags from API" "false")
+            discover_export_tags="$input"
 
-            echo "  ${C_BOLD_WHITE}Random Tags List${C_RESET} ${C_DIM}(comma-separated, stored as bash array)${C_RESET}"
-            echo -n "  ${C_GREEN}▸${C_RESET} "
-            read -r input </dev/tty
-            if [[ -n "$input" ]]; then
-                random_tags_list_parsed=$(echo "$input" | tr ',' '\n' | while read -r tag; do echo "\"$tag\""; done | tr '\n' ' ')
-                random_tags_list="($random_tags_list_parsed)"
+            if [[ "$discover_export_tags" == "true" ]]; then
+                input=$(prompt_with_default "Number of Tags to Discover" "50" "100")
+                discover_count="$input"
+
+                echo ""
+                echo "  ${C_BOLD_WHITE}Discovering tags...${C_RESET}"
+                EXPORTED_TAGS_FILE="$HOME/.config/konapaper/discovered_tags.txt"
+                discover_tags "" count "$discover_count"
+
+                random_tags_list="\"$HOME/.config/konapaper/discovered_tags.txt\""
+
+                input=$(prompt_with_default "Random Tags Count" "3" "5")
+                random_tags_count="$input"
             else
-                random_tags_list="(\"landscape\" \"scenic\" \"sky\" \"clouds\" \"water\" \"original\" \"touhou\" \"building\")"
+                input=$(prompt_with_default "Random Tags Count" "3" "5")
+                random_tags_count="$input"
+
+                echo "  ${C_BOLD_WHITE}Random Tags List${C_RESET} ${C_DIM}(comma-separated, stored as bash array)${C_RESET}"
+                echo -n "  ${C_GREEN}▸${C_RESET} "
+                read -r input </dev/tty
+                if [[ -n "$input" ]]; then
+                    random_tags_list_parsed=$(echo "$input" | tr ',' '\n' | while read -r tag; do echo "\"$tag\""; done | tr '\n' ' ')
+                    random_tags_list="($random_tags_list_parsed)"
+                else
+                    random_tags_list="(\"landscape\" \"scenic\" \"sky\" \"clouds\" \"water\" \"original\" \"touhou\" \"building\")"
+                fi
             fi
         else
             random_tags_count="0"
