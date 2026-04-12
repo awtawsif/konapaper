@@ -22,13 +22,13 @@ run_cache_cleanup() {
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             echo "Aborted."
             log_write "INFO" "Cache cleanup aborted by user"
-            exit 0
+            return 1
         fi
     fi
     find "$CACHE_DIR" -maxdepth 1 -type d -name "preload_*" -exec rm -rf {} +
     echo "✅ Preload cache cleaned. Current wallpaper preserved."
     log_success "Cache cleanup completed"
-    exit 0
+    return 0
 }
 
 preload_wallpapers() {
@@ -49,10 +49,10 @@ preload_wallpapers() {
     fi
     local completed=0
     for (( i=1; i<=to_preload; i++ )); do
-        # Use per-job temp files to avoid race conditions on .last_url
-        local tmpfile="$PRELOAD_DIR/preload_${RANDOM}_job_${i}"
+        # Use mktemp for fully unique per-job temp files to avoid race conditions
+        local tmpfile
+        tmpfile=$(mktemp "$PRELOAD_DIR/preload_job_XXXXXX")
         download_wallpaper "$tmpfile" &
-        sleep 0.3
     done
     wait
 
@@ -67,7 +67,7 @@ preload_wallpapers() {
 
 select_next_wallpaper() {
     local next
-    next=$(find "$PRELOAD_DIR" -type f \( -name "*.jpg" -o -name "*.gif" -o -name "*.webm" -o -name "*.png" \) | shuf -n 1)
+    next=$(find "$PRELOAD_DIR" -type f \( -name "*.jpg" -o -name "*.gif" -o -name "*.webm" -o -name "*.png" \) | sort | head -n1)
     if [ -n "$next" ]; then
         local ext
         ext=$(get_extension_from_url "$next")

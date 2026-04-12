@@ -1,0 +1,12 @@
+# ShellCheck configuration for Konapaper
+# https://github.com/koalaman/shellcheck/wiki/RC-file-settings
+
+# Disable rules that are acceptable
+# SC2034: Variable appears unused (common for globals set in one module, read in another)
+disable=SC2034
+
+# Source paths
+source-path=lib
+
+# Shell dialect
+shell=bash

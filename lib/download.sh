@@ -21,26 +21,7 @@ filter_and_select_post() {
     local use_filters="$3"  # "true" if dimension/size filters are active
 
     local jq_filter
-    if [[ "$use_filters" == "true" ]]; then
-        jq_filter='
-if type == "array" then . else .posts? // . end |
- map(select(
-  type == "object" and
-  .file_size != null and
-  .width != null and
-  .height != null and
-  (.file_size <= $max_size or $max_size == 0) and
-  (.file_size >= $min_size or $min_size == 0) and
-  (.width <= $max_width or $max_width == 0) and
-  (.width >= $min_width or $min_width == 0) and
-  (.height <= $max_height or $max_height == 0) and
-  (.height >= $min_height or $min_height == 0) and
-  ($aspect_ratio == 0 or (.width / .height >= ($aspect_ratio - 0.02) and .width / .height <= ($aspect_ratio + 0.02)))
- )) |
- .[] | "\(.id)|\(.file_url)"'
-    else
-        jq_filter='if type == "array" then . else .posts? // . end | .[] | "\(.id)|\(.file_url)"'
-    fi
+    jq_filter=$(build_jq_filter "$use_filters")
 
     local all_candidates
     all_candidates=$(jq -r \
@@ -60,7 +41,7 @@ if type == "array" then . else .posts? // . end |
     # Try to pick one not already downloaded
     if [[ -n "$downloaded_ids" ]]; then
         local new_candidates
-        new_candidates=$(echo "$all_candidates" | grep -v "^${downloaded_ids}$" | shuf)
+        new_candidates=$(echo "$all_candidates" | grep -vxFf <(echo "$downloaded_ids") | shuf)
         if [[ -n "$new_candidates" ]]; then
             echo "$new_candidates" | head -n1
             return 0
@@ -125,33 +106,27 @@ download_wallpaper() {
         return 1
     fi
 
+    # Determine if dimension/size filters are active (needed for both dry-run and normal mode)
+    local use_filters="false"
+    if (( MAX_FILE_SIZE_BYTES != 0 || MIN_FILE_SIZE_BYTES != 0 )) || \
+       [[ -n "$MIN_WIDTH" || -n "$MAX_WIDTH" || -n "$MIN_HEIGHT" || -n "$MAX_HEIGHT" || "$ASPECT_RATIO_FLOAT" != "0" ]]; then
+        use_filters="true"
+    fi
+
     if [[ "$DRY_RUN" == true ]]; then
         log_write "INFO" "Dry run mode: displaying available posts"
         echo "---- Available Posts ----"
         printf "ID\tScore\tAuthor\tWidth\tHeight\tSize\tTags\n"
-        if (( MAX_FILE_SIZE_BYTES == 0 && MIN_FILE_SIZE_BYTES == 0 )) && [[ -z "$MIN_WIDTH" && -z "$MAX_WIDTH" && -z "$MIN_HEIGHT" && -z "$MAX_HEIGHT" && "$ASPECT_RATIO_FLOAT" == "0" ]]; then
-            jq -r 'if type == "array" then . else .posts? // . end | map([.id, (.score // 0), (.author // "unknown"), .width, .height, (.file_size|tostring), (.tags | .[0:50])]) | .[] | @tsv' "$json"
-        else
+        local dry_run_filter
+        dry_run_filter=$(build_jq_dry_run_filter "$use_filters")
+        if [[ "$use_filters" == "true" ]]; then
             jq -r --argjson max_size "$MAX_FILE_SIZE_BYTES" --argjson min_size "$MIN_FILE_SIZE_BYTES" \
                 --argjson max_width "$MAX_WIDTH_NUM" --argjson min_width "$MIN_WIDTH_NUM" \
                 --argjson max_height "$MAX_HEIGHT_NUM" --argjson min_height "$MIN_HEIGHT_NUM" \
                 --argjson aspect_ratio "$ASPECT_RATIO_FLOAT" \
-'if type == "array" then . else .posts? // . end | 
- map(select(
-    type == "object" and 
-    .file_size != null and 
-    .width != null and 
-    .height != null and
-    (.file_size <= $max_size or $max_size == 0) and 
-    (.file_size >= $min_size or $min_size == 0) and
-    (.width <= $max_width or $max_width == 0) and
-    (.width >= $min_width or $min_width == 0) and
-    (.height <= $max_height or $max_height == 0) and
-    (.height >= $min_height or $min_height == 0) and
-    ($aspect_ratio == 0 or (.width / .height >= ($aspect_ratio - 0.02) and .width / .height <= ($aspect_ratio + 0.02)))
- )) | 
- map([.id, (.score // 0), (.author // "unknown"), .width, .height, (.file_size|tostring), (.tags | .[0:50])]) | 
- .[] | @tsv' "$json"
+                "$dry_run_filter" "$json"
+        else
+            jq -r "$dry_run_filter" "$json"
         fi
         log_file_operation "delete" "$json"
         rm -f "$json"
@@ -163,13 +138,6 @@ local IMAGE_URL
 
     local downloaded_ids
     downloaded_ids=$(get_downloaded_ids)
-
-    # Determine if dimension/size filters are active
-    local use_filters="false"
-    if (( MAX_FILE_SIZE_BYTES != 0 || MIN_FILE_SIZE_BYTES != 0 )) || \
-       [[ -n "$MIN_WIDTH" || -n "$MAX_WIDTH" || -n "$MIN_HEIGHT" || -n "$MAX_HEIGHT" || "$ASPECT_RATIO_FLOAT" != "0" ]]; then
-        use_filters="true"
-    fi
 
     local selected
     if selected=$(filter_and_select_post "$json" "$downloaded_ids" "$use_filters"); then
@@ -203,8 +171,8 @@ local IMAGE_URL
     ext=$(get_extension_from_url "$IMAGE_URL")
     local outfile_with_ext="${outfile}.${ext}"
 
-    # Store the actual URL in a per-job file to avoid race conditions
-    # during concurrent preload operations
+    # Store the actual URL in a per-job temp file to avoid race conditions
+    # during concurrent preload operations (outfile base is unique per job)
     echo "$IMAGE_URL" > "${outfile}.url"
 
     local tmpfile="${outfile_with_ext}.tmp"

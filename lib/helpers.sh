@@ -86,3 +86,61 @@ parse_page_argument() {
     echo "Error: Invalid page format '$arg'. Use number, 'random', or 'MIN-MAX'" >&2
     return 1
 }
+
+# Build the jq filter for selecting posts with optional dimension/size filtering.
+# Returns a jq filter string that selects posts matching the given constraints.
+# Globals used: MAX_FILE_SIZE_BYTES, MIN_FILE_SIZE_BYTES, MIN_WIDTH_NUM,
+#   MAX_WIDTH_NUM, MIN_HEIGHT_NUM, MAX_HEIGHT_NUM, ASPECT_RATIO_FLOAT.
+build_jq_filter() {
+    local use_filters="$1"  # "true" if dimension/size filters are active
+
+    if [[ "$use_filters" == "true" ]]; then
+        cat <<'JQFILTER'
+if type == "array" then . else .posts? // . end |
+ map(select(
+  type == "object" and
+  .file_size != null and
+  .width != null and
+  .height != null and
+  (.file_size <= $max_size or $max_size == 0) and
+  (.file_size >= $min_size or $min_size == 0) and
+  (.width <= $max_width or $max_width == 0) and
+  (.width >= $min_width or $min_width == 0) and
+  (.height <= $max_height or $max_height == 0) and
+  (.height >= $min_height or $min_height == 0) and
+  ($aspect_ratio == 0 or (.width / .height >= ($aspect_ratio - 0.02) and .width / .height <= ($aspect_ratio + 0.02)))
+ )) |
+ .[] | "\(.id)|\(.file_url)"
+JQFILTER
+    else
+        echo 'if type == "array" then . else .posts? // . end | .[] | "\(.id)|\(.file_url)"'
+    fi
+}
+
+# Build the jq filter for dry-run display output (tabular format).
+build_jq_dry_run_filter() {
+    local use_filters="$1"
+
+    if [[ "$use_filters" == "true" ]]; then
+        cat <<'JQFILTER'
+if type == "array" then . else .posts? // . end |
+ map(select(
+    type == "object" and
+    .file_size != null and
+    .width != null and
+    .height != null and
+    (.file_size <= $max_size or $max_size == 0) and
+    (.file_size >= $min_size or $min_size == 0) and
+    (.width <= $max_width or $max_width == 0) and
+    (.width >= $min_width or $min_width == 0) and
+    (.height <= $max_height or $max_height == 0) and
+    (.height >= $min_height or $min_height == 0) and
+    ($aspect_ratio == 0 or (.width / .height >= ($aspect_ratio - 0.02) and .width / .height <= ($aspect_ratio + 0.02)))
+ )) |
+ map([.id, (.score // 0), (.author // "unknown"), .width, .height, (.file_size|tostring), (.tags | .[0:50])]) |
+ .[] | @tsv
+JQFILTER
+    else
+        echo 'if type == "array" then . else .posts? // . end | map([.id, (.score // 0), (.author // "unknown"), .width, .height, (.file_size|tostring), (.tags | .[0:50])]) | .[] | @tsv'
+    fi
+}

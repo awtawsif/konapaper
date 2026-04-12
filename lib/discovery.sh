@@ -28,7 +28,9 @@ discover_tags() {
             echo "$tags_output"
         fi
     else
-        echo "Error: Failed to fetch tags"
+        echo "Error: Failed to fetch tags" >&2
+        rm -f "$xml"
+        return 1
     fi
     rm -f "$xml"
 }
@@ -46,7 +48,9 @@ discover_artists() {
     if curl -sf "$api_url" > "$xml"; then
         xmllint --xpath '//artist' "$xml" | sed -n 's/.*name="\([^"]*\)".*/\1/p' | head -"$limit"
     else
-        echo "Error: Failed to fetch artists"
+        echo "Error: Failed to fetch artists" >&2
+        rm -f "$xml"
+        return 1
     fi
     rm -f "$xml"
 }
@@ -64,7 +68,9 @@ list_pools() {
     if curl -sf "$api_url" > "$xml"; then
         xmllint --xpath '//pool' "$xml" | sed -n 's/.*id="\([^"]*\)".*name="\([^"]*\)".*post_count="\([^"]*\)".*/\1: \2 (\3 posts)/p' | head -"$limit"
     else
-        echo "Error: Failed to fetch pools"
+        echo "Error: Failed to fetch pools" >&2
+        rm -f "$xml"
+        return 1
     fi
     rm -f "$xml"
 }

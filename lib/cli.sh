@@ -51,7 +51,6 @@ display_help() {
     echo ""
 
     echo "  ${C_BOLD_BLUE}⚙  System & Maintenance${C_RESET}"
-    echo "    ${C_BOLD_WHITE}-I, --init${C_RESET}             Auto-detect environment, write default config"
     echo "    ${C_BOLD_WHITE}-ii, --init-interactive${C_RESET} Guided setup with interactive prompts"
     echo "    ${C_BOLD_WHITE}-cc, --clean-cache${C_RESET}      Clean preload folders"
     echo "    ${C_BOLD_WHITE}-cf, --clean-force${C_RESET}      Force clean without confirmation"
@@ -148,13 +147,17 @@ parse_cli_args() {
             -D|--discover-tags) DISCOVER_TAGS=true ;;
             -A|--discover-artists) DISCOVER_ARTISTS=true ;;
             -L|--list-pools) LIST_POOLS=true ;;
-            -S|--search-pools) SEARCH_POOLS="$2"; LIST_POOLS=true; shift ;;
+            -S|--search-pools)
+                if [[ -z "$2" || "$2" == -* ]]; then
+                    echo "Error: --search-pools requires a value" >&2
+                    exit 1
+                fi
+                SEARCH_POOLS="$2"; LIST_POOLS=true; shift ;;
              -R|--random-tags) RANDOM_TAGS_COUNT="$2"; shift ;;
--E|--export-tags) EXPORT_TAGS=true ;;
+              -E|--export-tags) EXPORT_TAGS=true ;;
               -cc|--clean-cache) CLEAN_MODE=true ;;
               -cf|--clean-force) CLEAN_MODE=true; FORCE_CLEAN=true ;;
-              -I|--init) INIT_MODE=true ;;
-              -ii|--init-interactive) INIT_MODE=true; INIT_INTERACTIVE=true ;;
+              -ii|--init-interactive) INIT_INTERACTIVE=true ;;
               --fav) FAV_MODE=true ;;
               --list-favs) LIST_FAVS=true ;;
               --from-favs) FROM_FAVS=true ;;

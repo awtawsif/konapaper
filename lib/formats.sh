@@ -27,7 +27,11 @@ get_extension_from_url() {
     local ext="${url##*.}"
     case "$ext" in
         jpg|jpeg|png|gif|webm) echo "$ext" ;;
-        *) echo "jpg" ;;
+        "") echo "jpg" ;;
+        *)
+            echo "Warning: unknown file extension '.$ext' in URL, defaulting to jpg" >&2
+            echo "jpg"
+            ;;
     esac
 }
 

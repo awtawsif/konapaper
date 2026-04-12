@@ -1,18 +1,12 @@
 #!/bin/bash
 # =================================================================
 # KONAPAPER — Configuration Loading
-# Config file resolution, loading, and random tag processing
+# Config file resolution and loading
 # =================================================================
 
-# --- Config File Resolution ---
-# Priority: 1. User Config -> 2. Script Directory -> 3. Current Directory
+# User config path only. Defaults live in constants.sh; the user config
+# overrides them. See man/konapaper.conf.5 for documentation.
 CONFIG_FILE="$HOME/.config/konapaper/konapaper.conf"
-if [[ ! -f "$CONFIG_FILE" ]]; then
-    CONFIG_FILE="${SCRIPT_DIR}/konapaper.conf"
-fi
-if [[ ! -f "$CONFIG_FILE" ]]; then
-    CONFIG_FILE="./konapaper.conf"
-fi
 
 load_config() {
     if [[ -f "$CONFIG_FILE" ]]; then
@@ -43,6 +37,8 @@ process_random_tags() {
         else
             TAGS="$selected_tags"
         fi
+        # Trim leading/trailing whitespace
+        TAGS="${TAGS#"${TAGS%%[![:space:]]*}"}"
         TAGS="${TAGS%"${TAGS##*[![:space:]]}"}"
     fi
 }

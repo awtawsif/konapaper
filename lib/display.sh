@@ -81,23 +81,31 @@ set_wallpaper() {
     # Use configured wallpaper command if specified
     if [[ -n "$WALLPAPER_COMMAND" ]]; then
         echo "Using wallpaper command..."
-        local cmd="${WALLPAPER_COMMAND//\{IMAGE\}/\"$img\"}"
-        echo "Executing: $cmd"
-        log_write "INFO" "Using custom wallpaper command: $cmd"
-        if eval "$cmd"; then
-            log_wallpaper_set "$img" "$cmd"
+        # Execute via bash -c to avoid eval; {IMAGE} becomes $1
+        local cmd="${WALLPAPER_COMMAND//\{IMAGE\}/\$1}"
+        local display="Executing: ${WALLPAPER_COMMAND//\{IMAGE\}/\"$img\"}"
+        echo "$display"
+        log_write "INFO" "Using custom wallpaper command: $display"
+        if bash -c "$cmd" _ "$img"; then
+            log_wallpaper_set "$img" "$display"
         else
-            log_error "Wallpaper command failed: $cmd"
+            log_error "Wallpaper command failed: $display"
             notify_error "Wallpaper Failed" "Custom command failed: $(basename "$img")"
         fi
         return $?
     fi
 
     # Auto-detect and use default wallpaper tool command from config
-    local detection
-    detection=$(detect_display_server)
-    local display_server="${detection%:*}"
-    local wallpaper_tool="${detection#*:}"
+    # (cached during bootstrap; fall back to detection if not set)
+    local display_server="${_DETECTED_DISPLAY_SERVER:-}"
+    local wallpaper_tool="${_DETECTED_WALLPAPER_TOOL:-}"
+
+    if [[ -z "$display_server" || -z "$wallpaper_tool" ]]; then
+        local detection
+        detection=$(detect_display_server)
+        display_server="${detection%:*}"
+        wallpaper_tool="${detection#*:}"
+    fi
 
     echo "Detected display server: $display_server"
     echo "Using wallpaper tool: $wallpaper_tool"
@@ -113,13 +121,15 @@ set_wallpaper() {
 
     if [[ -n "$tool_cmd" ]]; then
         echo "Using default command for $wallpaper_tool"
-        local cmd="${tool_cmd//\{IMAGE\}/\"$img\"}"
-        echo "Executing: $cmd"
-        log_write "INFO" "Using default command for $wallpaper_tool: $cmd"
-        if eval "$cmd"; then
-            log_wallpaper_set "$img" "$cmd"
+        # Execute via bash -c; {IMAGE} becomes $1 for safe argument passing
+        local cmd="${tool_cmd//\{IMAGE\}/\$1}"
+        local display="Executing: ${tool_cmd//\{IMAGE\}/\"$img\"}"
+        echo "$display"
+        log_write "INFO" "Using default command for $wallpaper_tool: $display"
+        if bash -c "$cmd" _ "$img"; then
+            log_wallpaper_set "$img" "$display"
         else
-            log_error "Wallpaper command failed: $cmd"
+            log_error "Wallpaper command failed: $display"
             notify_error "Wallpaper Failed" "$wallpaper_tool failed to set $(basename "$img")"
         fi
         return $?
@@ -151,7 +161,7 @@ set_wallpaper_awww() {
         while [[ $attempt -lt $max_attempts ]]; do
             ((attempt++))
             echo "Setting wallpaper (GIF attempt $attempt/$max_attempts)..."
-            if eval "awww img \"$img\" --transition-type any --transition-fps 60 --transition-duration 1"; then
+            if awww img "$img" --transition-type any --transition-fps 60 --transition-duration 1; then
                 success=true
                 break
             fi
@@ -162,13 +172,13 @@ set_wallpaper_awww() {
             echo "Clearing awww cache and retrying..."
             awww clear-cache
             sleep 1
-            eval "awww img \"$img\" --transition-type any --transition-fps 60 --transition-duration 1"
+            awww img "$img" --transition-type any --transition-fps 60 --transition-duration 1
         fi
     else
         while [[ $attempt -lt $max_attempts ]]; do
             ((attempt++))
             echo "Setting wallpaper (attempt $attempt/$max_attempts)..."
-            if eval "awww img \"$img\" --transition-type any --transition-fps 60 --transition-duration 1"; then
+            if awww img "$img" --transition-type any --transition-fps 60 --transition-duration 1; then
                 success=true
                 break
             fi

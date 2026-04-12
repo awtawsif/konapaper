@@ -22,15 +22,12 @@ A wallpaper rotator for Wayland and X11 that fetches high-quality images from [K
 git clone https://github.com/awtawsif/konapaper.git
 cd konapaper
 chmod +x konapaper.sh
-./konapaper.sh --init          # auto-detects environment, writes config
-./konapaper.sh                 # set a random wallpaper
+./konapaper.sh --init-interactive   # guided setup wizard
+./konapaper.sh                      # set a random wallpaper
 ```
 
-Or use the interactive wizard:
-
-```bash
-./konapaper.sh --init-interactive
-```
+The interactive wizard auto-detects your display server, available wallpaper
+tools, and writes a personalised config to `~/.config/konapaper/konapaper.conf`.
 
 ## Requirements
 
@@ -114,7 +111,6 @@ Run `./konapaper.sh --help` for the complete option list, or see the table below
 | `--from-favs` | | Random from favorites | false |
 | `--clean-cache` | `-cc` | Clean preload cache | false |
 | `--clean-force` | `-cf` | Force clean (no prompt) | false |
-| `--init` | `-I` | Non-interactive init | false |
 | `--init-interactive` | `-ii` | Interactive init wizard | false |
 | `--version` | `-v` | Show version | |
 | `--help` | `-h` | Show help | |
@@ -147,7 +143,9 @@ Run `./konapaper.sh --help` for the complete option list, or see the table below
 
 ## Configuration
 
-Configuration lives in `~/.config/konapaper/konapaper.conf` (created by `--init`). The file is self-documenting — every option is commented with its purpose and default value.
+Configuration lives in `~/.config/konapaper/konapaper.conf` (created by `--init-interactive`).
+All defaults are built into the script — the config file is only needed for overrides.
+For a full reference, see `man/konapaper.conf.5` (or `man -l man/konapaper.conf.5`).
 
 ```bash
 # Minimal custom config example
@@ -185,11 +183,10 @@ BASE_URL="https://yoursite.example.com"
 ```
 konapaper/
 ├── konapaper.sh              # Entry point
-├── konapaper.conf            # Default configuration
 ├── lib/
-│   ├── constants.sh          # Globals, defaults, colors
+│   ├── constants.sh          # Globals, defaults, colors, tool commands
 │   ├── config.sh             # Config loading
-│   ├── helpers.sh            # Size/aspect/page parsers
+│   ├── helpers.sh            # Size/aspect/page parsers, jq filter builder
 │   ├── logging.sh            # Log functions & rotation
 │   ├── formats.sh            # Format detection helpers
 │   ├── display.sh            # Server detection & wallpaper setting
@@ -197,9 +194,12 @@ konapaper/
 │   ├── cache.sh              # Preload management
 │   ├── discovery.sh          # Tag/artist/pool discovery
 │   ├── favorites.sh          # Favorites CRUD
-│   ├── init.sh               # Init wizard
+│   ├── init.sh               # Interactive init wizard
 │   ├── cli.sh                # Argument parsing & help
 │   └── notifications.sh      # notify-send wrappers
+├── man/
+│   └── konapaper.conf.5      # Man page for config options
+├── tests/                    # Bats test suite
 └── api_doc.md                # Moebooru API reference
 ```
 
@@ -211,6 +211,9 @@ shellcheck konapaper.sh lib/*.sh
 
 # Syntax check
 bash -n konapaper.sh && for f in lib/*.sh; do bash -n "$f"; done
+
+# Run tests (requires bats-core)
+./run_tests.sh
 
 # Dry-run test
 ./konapaper.sh --dry-run --tags "test" --limit 1
@@ -231,7 +234,7 @@ bash -n konapaper.sh && for f in lib/*.sh; do bash -n "$f"; done
 | No wallpaper tool found | Install one: `awww`/`feh` (recommended) |
 | No suitable image found | Relax filters, increase `--limit`, try different tags |
 | Download fails | Check internet, verify Konachan is reachable |
-| Wrong tool used | Re-run `--init` or set `WALLPAPER_COMMAND` manually |
+| Wrong tool used | Re-run `--init-interactive` or set `WALLPAPER_COMMAND` manually |
 | GIF artifacts | Ensure `awww-daemon` is running (auto-started) |
 
 For detailed debugging, enable logging in your config or run with `ENABLE_LOGGING="true" LOG_LEVEL="verbose"`.

@@ -5,6 +5,8 @@
 # Supports: tags, pools, artist, score filters, size limits, preload cache, cleanup
 # =================================================================
 
+set -o pipefail
+
 # Resolve script directory for sourcing modules
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/lib"
@@ -65,6 +67,11 @@ ANIMATED_ONLY="${ANIMATED_ONLY:-false}"
 log_init
 MAX_PRELOAD_CACHE=${MAX_PRELOAD_CACHE:-10}
 DISCOVER_LIMIT=${DISCOVER_LIMIT:-20}
+
+# --- Cache display server detection (avoids repeated pgrep/loginctl calls) ---
+_cached_detection=$(detect_display_server)
+_DETECTED_DISPLAY_SERVER="${_cached_detection%:*}"
+_DETECTED_WALLPAPER_TOOL="${_cached_detection#*:}"
 
 # --- Parse CLI ---
 parse_cli_args "$@"
@@ -136,9 +143,13 @@ mkdir -p "$PRELOAD_DIR"
 # --- Cleanup Mode ---
 if $CLEAN_MODE; then
     run_cache_cleanup
+    exit $?
 fi
 
 # --- Lock Handling ---
+# Ensure lock is released on any exit (normal, error, or signal)
+trap 'flock -u 9 2>/dev/null; rm -f "$LOCKFILE"' EXIT
+
 exec 9>"$LOCKFILE"
 if ! flock -n 9; then
     echo "Error: another instance is already running. Exiting." >&2
@@ -146,9 +157,9 @@ if ! flock -n 9; then
     exit 1
 fi
 
-# --- Init Mode ---
-if $INIT_MODE; then
-    run_init_mode
+# --- Init Wizard ---
+if $INIT_INTERACTIVE; then
+    run_init_interactive
 fi
 
 # --- Main ---
@@ -158,44 +169,37 @@ if $FAV_MODE; then
     if save_to_favorites; then
         notify_favorite_saved "$(basename "$(get_current_wallpaper)")"
     fi
-    flock -u 9
     exit 0
 fi
 
 if $LIST_FAVS; then
     list_favorites
-    flock -u 9
     exit 0
 fi
 
 if $FROM_FAVS; then
     set_from_favorites
-    flock -u 9
     exit 0
 fi
 
 if [[ "$DRY_RUN" == true ]]; then
     download_wallpaper "/dev/null"
-    flock -u 9
     exit 0
 fi
 
 # --- Discovery Modes ---
 if $DISCOVER_TAGS; then
     discover_tags
-    flock -u 9
     exit 0
 fi
 
 if $DISCOVER_ARTISTS; then
     discover_artists
-    flock -u 9
     exit 0
 fi
 
 if $LIST_POOLS; then
     list_pools "$SEARCH_POOLS"
-    flock -u 9
     exit 0
 fi
 
@@ -213,7 +217,7 @@ else
     echo "No cached wallpapers found; downloading..." >&2
     notify_progress_update "Downloading" "Fetching wallpaper from Konachan..."
 
-    temp_wallpaper="$CACHE_DIR/current.tmp"
+    temp_wallpaper=$(mktemp "$CACHE_DIR/current.tmp.XXXXXX")
     if download_wallpaper "$temp_wallpaper"; then
         ext=$(get_extension_from_url "$(cat "${temp_wallpaper}.url" 2>/dev/null)")
         final_wallpaper="$CACHE_DIR/current.$ext"
@@ -226,7 +230,6 @@ else
         log_error "Failed to download wallpaper"
         echo "Error: failed to fetch wallpaper." >&2
         notify_error "Download Failed" "Could not fetch a suitable wallpaper"
-        flock -u 9
         exit 1
     fi
 fi

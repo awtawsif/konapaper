@@ -1,0 +1,246 @@
+.\" =================================================================
+.\" KONAPAPER.CONF(5)      Konapaper User Manual     KONAPAPER.CONF(5)
+.\" =================================================================
+.TH KONAPAPER.CONF 5 "April 2026" "Konapaper 1.3.0" "Konapaper User Manual"
+.SH NAME
+konapaper.conf \- user configuration file for \fBkonapaper\fR(1)
+.SH SYNOPSIS
+.B ~/.config/konapaper/konapaper.conf
+.SH DESCRIPTION
+This file contains user overrides for the Konapaper wallpaper rotator.
+All defaults are defined in the script itself; this file is only needed
+when you want to change behaviour from the defaults.
+.PP
+The file uses simple Bash variable assignment syntax.
+Each option is a single line in the form:
+.IP
+.B VARIABLE="value"
+.PP
+To see all available options and their defaults, run \fBkonapaper.sh --help\fR
+or use the interactive setup wizard: \fBkonapaper.sh --init-interactive\fR
+.SH SEARCH PARAMETERS
+.TP
+.B TAGS
+A space-separated list of Moebooru tags to filter search results.
+Tags can include character names, artists, series, or general descriptors.
+.br
+Example: \fBTAGS="touhou scenic"\fR
+.br
+Default: \fI""\fR (none)
+.TP
+.B LIMIT
+The number of posts to retrieve from the API for each query.
+.br
+Default: \fI50\fR
+.TP
+.B RATING
+Filter posts by content rating: \fBs\fR (safe), \fBq\fR (questionable), \fBe\fR (explicit).
+.br
+Default: \fB"s"\fR
+.TP
+.B ORDER
+Sorting order: \fBrandom\fR, \fBscore\fR, or \fBdate\fR.
+.br
+Default: \fB"random"\fR
+.TP
+.B PAGE
+Page number to query. Can be a fixed number, the string \fB"random"\fR, or a range \fB"MIN-MAX"\fR.
+.br
+Default: \fB1\fR
+.SH ADVANCED FILTERING
+.TP
+.B MAX_FILE_SIZE
+Maximum allowed file size. Use formats like \fB500KB\fR, \fB2MB\fR, \fB1GB\fR.
+Set to \fB0\fR to disable.
+.br
+Default: \fB"2MB"\fR
+.TP
+.B MIN_FILE_SIZE
+Minimum allowed file size. Helps filter out thumbnails or low-quality images.
+.br
+Default: \fI"0"\fR (disabled)
+.TP
+.B MIN_SCORE
+Only use images with a score greater than or equal to this value.
+.br
+Default: \fI""\fR (disabled)
+.TP
+.B ARTIST
+Filter posts by a specific artist or uploader.
+.br
+Default: \fI""\fR (disabled)
+.TP
+.B POOL_ID
+Download from a specific pool (collection) instead of searching by tags.
+Setting this ignores TAGS, RATING, and ORDER.
+.br
+Default: \fI""\fR (disabled)
+.SH RESOLUTION AND ASPECT RATIO
+.TP
+.BR MIN_WIDTH ", " MAX_WIDTH
+Horizontal resolution constraints in pixels.
+.br
+Default: \fI""\fR (disabled)
+.TP
+.BR MIN_HEIGHT ", " MAX_HEIGHT
+Vertical resolution constraints in pixels.
+.br
+Default: \fI""\fR (disabled)
+.TP
+.B ASPECT_RATIO
+Filter by visual proportions. Supported: \fB16:9\fR, \fB21:9\fR, \fB4:3\fR, \fB16:10\fR, \fB3:2\fR, \fB5:4\fR, \fB32:9\fR, or any custom \fBN:M\fR ratio.
+.br
+Default: \fI""\fR (disabled)
+.SH ANIMATED CONTENT
+.TP
+.B PREFERRED_FORMAT
+Desired file format: \fBjpg\fR, \fBgif\fR, or \fBwebm\fR.
+.br
+Default: \fB"jpg"\fR
+.TP
+.B ANIMATED_ONLY
+When \fBtrue\fR, ignores generic tags and searches specifically for animated content (GIF/WebM).
+.br
+Default: \fB"false"\fR
+.SH RANDOM TAG FEATURE
+.TP
+.B RANDOM_TAGS_LIST
+Tags to randomly pick from when running with \fB--random-tags\fR.
+Can be a bash array or a file path (one tag per line).
+.br
+Example: \fBRANDOM_TAGS_LIST=("landscape" "scenic" "sky")\fR
+.br
+Example: \fBRANDOM_TAGS_LIST="$HOME/.config/konapaper/discovered_tags.txt"\fR
+.br
+Default: \fB("landscape" "scenic" "sky" "clouds" "water" "original" "touhou" "building")\fR
+.TP
+.B RANDOM_TAGS_COUNT
+The number of tags to pick from RANDOM_TAGS_LIST. Set to \fB0\fR to disable.
+.br
+Default: \fB0\fR
+.SH CACHE AND PRELOADING
+.TP
+.B PRELOAD_COUNT
+Number of wallpapers to download in the background for the next rotation.
+.br
+Default: \fB3\fR
+.TP
+.B MAX_PRELOAD_CACHE
+Maximum number of wallpapers to retain in the preload directory.
+.br
+Default: \fB10\fR
+.TP
+.B DISCOVER_LIMIT
+Number of items to fetch for discovery modes (tags/artists/pools).
+.br
+Default: \fB20\fR
+.TP
+.B FAVORITES_DIR
+Directory where wallpapers saved with \fB--fav\fR are stored.
+.br
+Default: \fB~/Pictures/Wallpapers\fR
+.SH NOTIFICATIONS
+.TP
+.B ENABLE_NOTIFICATIONS
+Enable desktop notification toasts. Uses \fBnotify-send\fR.
+.br
+Default: \fB"false"\fR
+.TP
+.B NOTIFY_TIMEOUT
+Timeout for completion notification toasts in milliseconds.
+.br
+Default: \fB5000\fR (5 seconds)
+.TP
+.B NOTIFY_PRELOAD
+Enable notifications for background preload progress.
+.br
+Default: \fB"false"\fR
+.SH LOGGING
+.TP
+.B ENABLE_LOGGING
+Enable execution logging for debugging.
+.br
+Default: \fB"false"\fR
+.TP
+.B LOG_FILE
+Path to the log file.
+.br
+Default: \fB~/.config/konapaper/konapaper.log\fR
+.TP
+.B LOG_LEVEL
+Detail level: \fBbasic\fR, \fBdetailed\fR, or \fBverbose\fR.
+.br
+Default: \fB"detailed"\fR
+.TP
+.B LOG_ROTATION
+Automatically rotate log files when they exceed 10MB.
+.br
+Default: \fB"true"\fR
+.SH DISPLAY SERVER AND COMMANDS
+.TP
+.B DISPLAY_SERVER
+Override auto-detected display server: \fBwayland\fR or \fBx11\fR.
+.br
+Default: \fI(auto-detected)\fR
+.TP
+.B WALLPAPER_COMMAND
+Custom command used to set the wallpaper.
+The placeholder \fB{IMAGE}\fR is replaced with the absolute path to the downloaded image.
+.br
+Example: \fBWALLPAPER_COMMAND="feh --bg-fill {IMAGE}"\fR
+.br
+Default: \fI(auto-detected based on available tools)\fR
+.SH WALLPAPER TOOL COMMANDS
+The following are the default command strings used when a tool is auto-detected.
+You can copy any of these into \fBWALLPAPER_COMMAND\fR to customise behaviour.
+.TP
+.B awww (Wayland)
+\fBawww img {IMAGE} --transition-type any --transition-fps 60 --transition-duration 1\fR
+.TP
+.B mpvpaper (Wayland/X11)
+\fBmpvpaper -f -o "loop" ALL {IMAGE}\fR
+.TP
+.B swaybg (Wayland)
+\fBpkill -f swaybg; swaybg -o '*' {IMAGE} &\fR
+.TP
+.B hyprpaper (Wayland)
+\fBhyprctl hyprpaper preload {IMAGE}; for monitor in $(hyprctl monitors -j | jq -r '.[].name'); do hyprctl hyprpaper wallpaper "${monitor},{IMAGE}"; done\fR
+.TP
+.B feh (X11)
+\fBfeh --bg-scale {IMAGE}\fR
+.TP
+.B nitrogen (X11)
+\fBnitrogen --set-scaled --save {IMAGE}\fR
+.TP
+.B xwallpaper (X11)
+\fBxwallpaper --zoom {IMAGE}\fR
+.SH EXAMPLES
+.SS Ultra-wide setup with high score filtering
+.nf
+TAGS="scenic"
+MIN_SCORE=30
+ASPECT_RATIO="21:9"
+MIN_WIDTH=3440
+.fi
+.SS Animated wallpaper enthusiast
+.nf
+PREFERRED_FORMAT="gif"
+ANIMATED_ONLY="true"
+WALLPAPER_COMMAND="mpvpaper -f -o \\"loop\\" ALL {IMAGE}"
+.fi
+.SH NOTES
+.IP \[bu] 2
+Changes to this file take effect on the next run of \fBkonapaper.sh\fR.
+.IP \[bu]
+Ensure all custom commands are installed and available in your \fBPATH\fR.
+.IP \[bu]
+All variables defined here can be overridden by their respective command-line flags.
+.IP \[bu]
+For other Moebooru-based sites, set \fBBASE_URL\fR in your config.
+.SH "SEE ALSO"
+.BR konapaper (1)
+.SH BUGS
+Report bugs at: https://github.com/awtawsif/konapaper/issues
+.\" =================================================================
+.\" KONAPAPER.CONF(5)                      April 2026                    KONAPAPER.CONF(5)
+.\" =================================================================

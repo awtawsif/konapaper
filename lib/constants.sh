@@ -32,7 +32,6 @@ ANIMATED_ONLY=false
 DRY_RUN=false
 CLEAN_MODE=false
 FORCE_CLEAN=false
-INIT_MODE=false
 INIT_INTERACTIVE=false
 DISCOVER_TAGS=false
 DISCOVER_ARTISTS=false
@@ -52,6 +51,9 @@ LOG_ROTATION=true
 
 # --- Download Tracking ---
 DOWNLOADED_IDS_FILE="$HOME/.config/konapaper/downloaded_ids"
+
+# --- Discovery ---
+EXPORTED_TAGS_FILE="$HOME/.config/konapaper/discovered_tags.txt"
 
 # --- Notification Variables ---
 ENABLE_NOTIFICATIONS=false
@@ -84,3 +86,13 @@ else
     C_BOLD_CYAN="" C_BOLD_GREEN="" C_BOLD_YELLOW="" C_BOLD_RED=""
     C_BOLD_MAGENTA="" C_BOLD_WHITE="" C_BG_CYAN=""
 fi
+
+# --- Wallpaper Tool Default Commands ---
+# Used by init wizard when no custom command is specified.
+WALLPAPER_COMMAND_AWWW='awww img {IMAGE} --transition-type any --transition-fps 60 --transition-duration 1'
+WALLPAPER_COMMAND_MPVPAPER='mpvpaper -f -o "loop" ALL {IMAGE}'
+WALLPAPER_COMMAND_SWAYBG='pkill -f swaybg; swaybg -o '"'"'*'"'"' {IMAGE} &'
+WALLPAPER_COMMAND_HYPRPAPER='hyprctl hyprpaper preload {IMAGE}; for monitor in $(hyprctl monitors -j | jq -r '"'"'.[].name'"'"'); do hyprctl hyprpaper wallpaper "${monitor},{IMAGE}"; done'
+WALLPAPER_COMMAND_FEH='feh --bg-scale {IMAGE}'
+WALLPAPER_COMMAND_NITROGEN='nitrogen --set-scaled --save {IMAGE}'
+WALLPAPER_COMMAND_XWALLPAPER='xwallpaper --zoom {IMAGE}'
