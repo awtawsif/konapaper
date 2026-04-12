@@ -98,6 +98,12 @@ set_wallpaper() {
     echo "Detected display server: $display_server"
     echo "Using wallpaper tool: $wallpaper_tool"
 
+    # Special handling for awww with daemon management and GIF support
+    if [[ "$wallpaper_tool" == "awww" ]]; then
+        set_wallpaper_awww "$img"
+        return $?
+    fi
+
     local tool_var="WALLPAPER_COMMAND_${wallpaper_tool^^}"
     local tool_cmd="${!tool_var}"
 
@@ -120,4 +126,58 @@ set_wallpaper() {
         notify_error "No Wallpaper Tool" "No command configured for $wallpaper_tool"
         return 1
     fi
+}
+
+set_wallpaper_awww() {
+    local img="$1"
+    local ext="${img##*.}"
+    local attempt=0
+    local max_attempts=3
+    local success=false
+
+    if ! pgrep -x "awww-daemon" >/dev/null 2>&1; then
+        echo "Starting awww-daemon..."
+        awww-daemon --no-fade &
+        sleep 2
+    fi
+
+    if [[ "$ext" == "gif" ]]; then
+        awww clear-cache
+        sleep 0.5
+        while [[ $attempt -lt $max_attempts ]]; do
+            ((attempt++))
+            echo "Setting wallpaper (GIF attempt $attempt/$max_attempts)..."
+            if eval "awww img \"$img\" --transition-type any --transition-fps 60 --transition-duration 1"; then
+                success=true
+                break
+            fi
+            sleep 1
+        done
+
+        if [[ "$success" == "false" ]]; then
+            echo "Clearing awww cache and retrying..."
+            awww clear-cache
+            sleep 1
+            eval "awww img \"$img\" --transition-type any --transition-fps 60 --transition-duration 1"
+        fi
+    else
+        while [[ $attempt -lt $max_attempts ]]; do
+            ((attempt++))
+            echo "Setting wallpaper (attempt $attempt/$max_attempts)..."
+            if eval "awww img \"$img\" --transition-type any --transition-fps 60 --transition-duration 1"; then
+                success=true
+                break
+            fi
+            sleep 1
+        done
+
+        if [[ "$success" == "false" ]]; then
+            log_error "awww failed to set wallpaper after $max_attempts attempts"
+            notify_error "Wallpaper Failed" "awww failed: $(basename "$img")"
+            return 1
+        fi
+    fi
+
+    log_wallpaper_set "$img" "awww img"
+    return 0
 }

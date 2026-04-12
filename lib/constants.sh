@@ -47,6 +47,9 @@ LOG_FILE="$HOME/.config/konapaper/konapaper.log"
 LOG_LEVEL="detailed"
 LOG_ROTATION=true
 
+# --- Download Tracking ---
+DOWNLOADED_IDS_FILE="$HOME/.config/konapaper/downloaded_ids"
+
 # --- Notification Variables ---
 ENABLE_NOTIFICATIONS=false
 NOTIFY_TIMEOUT=5000

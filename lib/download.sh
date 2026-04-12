@@ -90,29 +90,84 @@ download_wallpaper() {
         return 0
     fi
 
-    local IMAGE_URL
+local IMAGE_URL
+    local SELECTED_ID=""
+    
+    get_downloaded_ids() {
+        if [[ -f "$DOWNLOADED_IDS_FILE" ]]; then
+            cat "$DOWNLOADED_IDS_FILE"
+        fi
+    }
+    
+    local downloaded_ids
+    downloaded_ids=$(get_downloaded_ids)
+    
     if (( MAX_FILE_SIZE_BYTES == 0 && MIN_FILE_SIZE_BYTES == 0 )) && [[ -z "$MIN_WIDTH" && -z "$MAX_WIDTH" && -z "$MIN_HEIGHT" && -z "$MAX_HEIGHT" && "$ASPECT_RATIO_FLOAT" == "0" ]]; then
-        IMAGE_URL=$(jq -r 'if type == "array" then . else .posts? // . end | .[].file_url' "$json" | shuf -n 1)
+        if [[ -n "$downloaded_ids" ]]; then
+            local candidates
+            candidates=$(jq -r 'if type == "array" then . else .posts? // . end | .[] | "\(.id)|\(.file_url)"' "$json" | grep -v "^${downloaded_ids}$" | shuf)
+            if [[ -n "$candidates" ]]; then
+                SELECTED_ID=$(echo "$candidates" | head -n1 | cut -d'|' -f1)
+                IMAGE_URL=$(echo "$candidates" | head -n1 | cut -d'|' -f2)
+            fi
+        fi
+        if [[ -z "$IMAGE_URL" ]]; then
+            local random_entry
+            random_entry=$(jq -r 'if type == "array" then . else .posts? // . end | .[] | "\(.id)|\(.file_url)"' "$json" | shuf -n 1)
+            SELECTED_ID=$(echo "$random_entry" | cut -d'|' -f1)
+            IMAGE_URL=$(echo "$random_entry" | cut -d'|' -f2)
+        fi
     else
-        IMAGE_URL=$(jq -r --argjson max_size "$MAX_FILE_SIZE_BYTES" --argjson min_size "$MIN_FILE_SIZE_BYTES" \
-            --argjson max_width "$MAX_WIDTH_NUM" --argjson min_width "$MIN_WIDTH_NUM" \
-            --argjson max_height "$MAX_HEIGHT_NUM" --argjson min_height "$MIN_HEIGHT_NUM" \
-            --argjson aspect_ratio "$ASPECT_RATIO_FLOAT" \
+        if [[ -n "$downloaded_ids" ]]; then
+            local candidates
+            candidates=$(jq -r --argjson max_size "$MAX_FILE_SIZE_BYTES" --argjson min_size "$MIN_FILE_SIZE_BYTES" \
+                --argjson max_width "$MAX_WIDTH_NUM" --argjson min_width "$MIN_WIDTH_NUM" \
+                --argjson max_height "$MAX_HEIGHT_NUM" --argjson min_height "$MIN_HEIGHT_NUM" \
+                --argjson aspect_ratio "$ASPECT_RATIO_FLOAT" \
 'if type == "array" then . else .posts? // . end |
  map(select(
-    type == "object" and
-    .file_size != null and
-    .width != null and
-    .height != null and
-    (.file_size <= $max_size or $max_size == 0) and
-    (.file_size >= $min_size or $min_size == 0) and
-    (.width <= $max_width or $max_width == 0) and
-    (.width >= $min_width or $min_width == 0) and
-    (.height <= $max_height or $max_height == 0) and
-    (.height >= $min_height or $min_height == 0) and
-    ($aspect_ratio == 0 or (.width / .height >= ($aspect_ratio - 0.02) and .width / .height <= ($aspect_ratio + 0.02)))
+  type == "object" and
+  .file_size != null and
+  .width != null and
+  .height != null and
+  (.file_size <= $max_size or $max_size == 0) and
+  (.file_size >= $min_size or $min_size == 0) and
+  (.width <= $max_width or $max_width == 0) and
+  (.width >= $min_width or $min_width == 0) and
+  (.height <= $max_height or $max_height == 0) and
+  (.height >= $min_height or $min_height == 0) and
+  ($aspect_ratio == 0 or (.width / .height >= ($aspect_ratio - 0.02) and .width / .height <= ($aspect_ratio + 0.02)))
  )) |
- .[].file_url' "$json" | shuf -n 1)
+ .[] | "\(.id)|\(.file_url)"' "$json" | grep -v "^${downloaded_ids}$" | shuf)
+            if [[ -n "$candidates" ]]; then
+                SELECTED_ID=$(echo "$candidates" | head -n1 | cut -d'|' -f1)
+                IMAGE_URL=$(echo "$candidates" | head -n1 | cut -d'|' -f2)
+            fi
+        fi
+        if [[ -z "$IMAGE_URL" ]]; then
+            local random_entry
+            random_entry=$(jq -r --argjson max_size "$MAX_FILE_SIZE_BYTES" --argjson min_size "$MIN_FILE_SIZE_BYTES" \
+                --argjson max_width "$MAX_WIDTH_NUM" --argjson min_width "$MIN_WIDTH_NUM" \
+                --argjson max_height "$MAX_HEIGHT_NUM" --argjson min_height "$MIN_HEIGHT_NUM" \
+                --argjson aspect_ratio "$ASPECT_RATIO_FLOAT" \
+'if type == "array" then . else .posts? // . end |
+ map(select(
+  type == "object" and
+  .file_size != null and
+  .width != null and
+  .height != null and
+  (.file_size <= $max_size or $max_size == 0) and
+  (.file_size >= $min_size or $min_size == 0) and
+  (.width <= $max_width or $max_width == 0) and
+  (.width >= $min_width or $min_width == 0) and
+  (.height <= $max_height or $max_height == 0) and
+  (.height >= $min_height or $min_height == 0) and
+  ($aspect_ratio == 0 or (.width / .height >= ($aspect_ratio - 0.02) and .width / .height <= ($aspect_ratio + 0.02)))
+ )) |
+ .[] | "\(.id)|\(.file_url)"' "$json" | shuf -n 1)
+            SELECTED_ID=$(echo "$random_entry" | cut -d'|' -f1)
+            IMAGE_URL=$(echo "$random_entry" | cut -d'|' -f2)
+        fi
     fi
 
     rm -f "$json"
@@ -178,5 +233,10 @@ download_wallpaper() {
     echo "-> Download complete ($(human_readable_size "$size"))"
     log_success "Image downloaded successfully: $outfile_with_ext ($(human_readable_size "$size"))"
     notify_progress_update "Download complete" "$(human_readable_size "$size")"
+    
+    if [[ -n "$SELECTED_ID" ]]; then
+        echo "$SELECTED_ID" >> "$DOWNLOADED_IDS_FILE"
+    fi
+    
     return 0
 }
