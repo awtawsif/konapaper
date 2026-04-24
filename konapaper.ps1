@@ -475,7 +475,7 @@ function Get-CurrentWallpaper {
 }
 
 function Preload-Wallpapers {
-    $existing = (Get-ChildItem -Path $script:PRELOAD_DIR -File -Include "*.jpg", "*.gif", "*.webm", "*.png" -ErrorAction SilentlyContinue).Count
+    $existing = (Get-ChildItem -Path "$script:PRELOAD_DIR\*" -File -Include "*.jpg", "*.gif", "*.webm", "*.png" -ErrorAction SilentlyContinue).Count
     $availableSlots = $script:MAX_PRELOAD_CACHE - $existing
 
     if ($availableSlots -le 0) {
@@ -609,7 +609,7 @@ function Preload-Wallpapers {
 }
 
 function Select-NextWallpaper {
-    $files = Get-ChildItem -Path $script:PRELOAD_DIR -File -Include "*.jpg", "*.gif", "*.webm", "*.png" -ErrorAction SilentlyContinue
+    $files = Get-ChildItem -Path "$script:PRELOAD_DIR\*" -File -Include "*.jpg", "*.gif", "*.webm", "*.png" -ErrorAction SilentlyContinue
     if ($files.Count -eq 0) { return $null }
 
     $next = $files | Get-Random
